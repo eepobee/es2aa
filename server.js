@@ -13,8 +13,12 @@ app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
 app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
   try {
+    console.log('Received file:', req.file); // Debug: log uploaded file
+
     const pdfBuffer = fs.readFileSync(req.file.path);
     const questions = await parseQuestionsFromPDF(pdfBuffer);
+
+    console.log('Parsed questions:', questions); // Debug: log parsed output
 
     const csvRows = questions.map(q => ({
       Title: q.id || '',
@@ -41,7 +45,7 @@ app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
 
     fs.unlinkSync(req.file.path);
   } catch (err) {
-    console.error(err);
+    console.error('Error processing PDF upload:', err);
     res.status(500).send('Failed to process PDF.');
   }
 });
