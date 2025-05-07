@@ -1,9 +1,10 @@
+// server.js
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const parseQuestionsFromPDF = require('./parsers/openaiParser');
+const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -15,7 +16,6 @@ app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
     const pdfBuffer = fs.readFileSync(req.file.path);
     const questions = await parseQuestionsFromPDF(pdfBuffer);
 
-    // Transform questions into CSV row objects
     const csvRows = questions.map(q => ({
       Title: q.id || '',
       'Question Text': q.question || '',
@@ -27,9 +27,10 @@ app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
       Topics: q.topics ? q.topics.join(', ') : '',
       "Bloom's Taxonomy": q.bloom || '',
       'Tag: Level': q.level || '',
-      'Course Number': q.courseNumber || ''
+      'Course Number': q.courseNumber || '',
+      Feedback: q.rationale || ''
     }));
-  
+
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
 
