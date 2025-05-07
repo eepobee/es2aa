@@ -32,8 +32,9 @@ async function parseQuestionsFromPDF(buffer) {
     const choicesMatch = block.match(/A\.\s*([\s\S]*?)\s*B\.\s*([\s\S]*?)\s*C\.\s*([\s\S]*?)\s*D\.\s*([\s\S]*?)(?=\n{2,}|$)/i);
     const choices = choicesMatch ? [choicesMatch[1], choicesMatch[2], choicesMatch[3], choicesMatch[4]] : [];
 
-    const correctMatch = block.match(/[✓✔√]\s*(.*)/);
-const correctAnswer = correctMatch ? correctMatch[1].trim() : '';
+    const correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([ABCD])\./);
+const correctIndex = correctMatch ? 'ABCD'.indexOf(correctMatch[1].toUpperCase()) : -1;
+const correctAnswer = correctIndex !== -1 && choices.length === 4 ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
