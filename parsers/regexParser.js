@@ -40,14 +40,14 @@ const correctAnswer = correctIndex !== -1 && choices.length === 4 ? choices[corr
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
     const catSectionMatch = block.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
-const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
+    const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
 
-const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
-const bloom = bloomLine || '';
+    const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
+    const bloom = bloomLine || '';
 
-const topics = catLines
-  .filter(line => line && !/^Imported_/i.test(line) && !/^\d{2}\s*-/.test(line))
-  .join('; ');
+    const topics = catLines
+      .filter(line => line && !/^Imported_/i.test(line) && !/^\d{2}\s*-/.test(line))
+      .join('; ');
 
     questions.push({
       id,
