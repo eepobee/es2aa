@@ -7,11 +7,11 @@ const path = require('path');
 const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
 const app = express();
-const upload = multer({ dest: path.join(__dirname, 'uploads') });
+const upload = multer({ dest: 'uploads/' });
 
-app.use('/', express.static(path.join(__dirname, 'public')));
+app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
-app.post('/uploads', upload.single('pdf'), async (req, res) => {
+app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
   try {
     console.log('Received file:', req.file); // Debug: log uploaded file
 
@@ -50,7 +50,7 @@ app.post('/uploads', upload.single('pdf'), async (req, res) => {
   }
 });
 
-app.get('/', (req, res) => {
+app.get('/tools/es2aa/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
