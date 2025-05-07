@@ -32,18 +32,9 @@ async function parseQuestionsFromPDF(buffer) {
     const choicesMatch = block.match(/A\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nD\.\s*(.*?)(?=\n|$)/s);
     const choices = choicesMatch ? [choicesMatch[1], choicesMatch[2], choicesMatch[3], choicesMatch[4]] : [];
 
-    // More robust correct answer match
-    let correctAnswer = '';
-    const correctMarkMatch = block.match(/✓\s*([ABCD])\.\s*(.*)/i);
-    if (correctMarkMatch) {
-      const correctLetter = correctMarkMatch[1].toUpperCase();
-      const correctText = correctMarkMatch[2].trim();
-      const correctIndex = 'ABCD'.indexOf(correctLetter);
-      if (correctIndex !== -1) {
-        choices[correctIndex] = correctText;  // overwrite if necessary
-        correctAnswer = correctText;
-      }
-    }
+    const correctMatch = block.match(/✓\s*([ABCD])\./);
+    const correctIndex = correctMatch ? 'ABCD'.indexOf(correctMatch[1].toUpperCase()) : -1;
+    const correctAnswer = correctIndex !== -1 && choices.length === 4 ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
@@ -64,10 +55,10 @@ async function parseQuestionsFromPDF(buffer) {
       choices,
       correctAnswer,
       rationale,
-      "Tag: Bloom's": bloom,
-      "Tag: Topics": topics,
-      "Tag: Level": level,
-      "Course Number": courseNumber
+      bloom,
+      topics,
+      courseNumber,
+      level
     });
   }
 
