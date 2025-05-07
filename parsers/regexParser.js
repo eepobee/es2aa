@@ -47,7 +47,7 @@ const bloom = bloomLine || '';
 
 const topics = catLines
   .filter(line => line && !/^Imported_/i.test(line) && !/^\d{2}\s*-/.test(line))
-  .join(', ');
+  .join('; ');
 
     questions.push({
       id,
