@@ -39,7 +39,7 @@ const correctAnswer = correctIndex !== -1 && choices.length === 4 ? choices[corr
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    const catSectionMatch = block.match(/Category Name\s+Category Path\n([\s\S]*?)\nItem Creator:/);
+    const catSectionMatch = block.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
 const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
 
 const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
