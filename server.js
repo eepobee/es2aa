@@ -25,9 +25,9 @@ app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
       'Choice D': q.choices?.[3] || '',
       'Correct Answer': q.correctAnswer || '',
       Topics: q.topics || '',
-      "Bloom's Taxonomy": q.bloom || '',
+      "Tag: Bloom's": q.bloom || '',
       'Tag: Level': q.level || '',
-      'Course Number': q.courseNumber || '',
+      'Tag: Course #': q.courseNumber || '',
       Feedback: q.rationale || ''
     }));
 
