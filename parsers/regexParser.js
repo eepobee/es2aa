@@ -1,65 +1,70 @@
-// File: openaiParser.js
+// parsers/regexParser.js
+const pdfParse = require('pdf-parse');
 
-const fs = require("fs");
-const pdfParse = require("pdf-parse");
+function getLevelFromCourse(course) {
+  const match = course.match(/NU\s*(\d+)/i);
+  if (!match) return '';
+  const num = parseInt(match[1], 10);
+  if (num >= 100 && num <= 399) return 'Undergraduate';
+  if (num >= 500 && num <= 899) return 'Graduate';
+  return '';
+}
 
-function extractQuestionsFromText(text) {
+async function parseQuestionsFromPDF(buffer) {
+  const data = await pdfParse(buffer);
+  const text = data.text;
+
   const questions = [];
+  const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
 
-  const blocks = text.split(/Question #:\s*/).slice(1); // drop preamble
+  for (const block of rawBlocks) {
+    const idMatch = block.match(/Item ID:\s*(\d+)/);
+    const id = idMatch ? idMatch[1] : '';
 
-  for (const block of blocks) {
-    const questionMatch = block.match(/^(.*?)\nA\./s);
-    const optionsMatch = block.match(/A\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nD\.\s*(.*?)\n/s);
-    const correctAnswerMatch = block.match(/✓([A-D])\./);
-    const rationaleMatch = block.match(/Rationale:\s*(.*?)\n(?:Item ID:|$)/s);
-    const itemIdMatch = block.match(/Item ID:\s*(\d+)\s*\//);
-    const categoryMatches = [...block.matchAll(/Category Name\s+Category Path\n([\s\S]*?)\n\n/g)].map(m => m[1]);
+    const courseMatch = block.match(/Course Number:\s*(NU\s*\d+)/i);
+    const courseNumber = courseMatch ? courseMatch[1] : '';
+    const level = getLevelFromCourse(courseNumber);
 
-    const categories = [...new Set(
-      categoryMatches
-        .flatMap(c => c.split(/\n+/))
-        .map(line => line.trim())
-        .filter(line => line && !line.startsWith("Topical") && !line.startsWith("IMPORTS"))
-    )];
+    const questionMatch = block.match(/(?:Question #:\s*\d+\s*)?(.+?)(?=\na\.|\na\))/s);
+    const question = questionMatch ? questionMatch[1].trim() : '';
 
-    const courseMatch = categories.find(c => /NU\s*(\d{3})/.test(c));
-    const courseNumberMatch = courseMatch?.match(/NU\s*(\d{3})/);
-    const courseNumber = courseNumberMatch ? parseInt(courseNumberMatch[1]) : null;
-    const level = courseNumber
-      ? courseNumber < 400
-        ? "Undergraduate"
-        : courseNumber < 900
-          ? "Graduate"
-          : ""
-      : "";
-
-    const blooms = categories.find(c => /^\d{2}\s*-/.test(c)) || "";
-    const topics = categories.filter(c => !/^\d{2}\s*-/.test(c)).join("; ");
-
-    if (questionMatch && optionsMatch && correctAnswerMatch) {
-      questions.push({
-        Title: itemIdMatch?.[1] || "",
-        Question: questionMatch[1].trim(),
-        OptionA: optionsMatch[1].trim(),
-        OptionB: optionsMatch[2].trim(),
-        OptionC: optionsMatch[3].trim(),
-        OptionD: optionsMatch[4].trim(),
-        Correct: correctAnswerMatch[1],
-        Feedback: rationaleMatch?.[1].trim() || "",
-        Level: level,
-        Bloom: blooms,
-        Topic: topics,
-      });
+    const choices = [];
+    const choiceMatch = block.match(/a\.\s*(.+?)\s*b\.\s*(.+?)\s*c\.\s*(.+?)\s*d\.\s*(.+?)(?:\n|$)/s);
+    if (choiceMatch) {
+      choices.push(choiceMatch[1], choiceMatch[2], choiceMatch[3], choiceMatch[4]);
     }
+
+    const correctMatch = block.match(/✓\s*([a-d])\./i);
+    const correctLetter = correctMatch ? correctMatch[1].toLowerCase() : '';
+    const correctAnswer = correctLetter && choices.length === 4 ? choices['abcd'.indexOf(correctLetter)] : '';
+
+    const rationaleMatch = block.match(/Rationale:\s*(.+?)(?:\n{2,}|$)/is);
+    const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
+
+    const categoryMatch = block.match(/Category Name:\s*([\s\S]+?)\n(?:\s*\w+:|$)/);
+    const categoryBlock = categoryMatch ? categoryMatch[1] : '';
+    const topics = categoryBlock
+      .split('\n')
+      .map(line => line.replace(/^\s*\d{2}\s*/, '').trim())
+      .filter(Boolean);
+
+    const bloomMatch = categoryBlock.match(/\b\d{2}\s*([A-Za-z]+)/);
+    const bloom = bloomMatch ? bloomMatch[1] : '';
+
+    questions.push({
+      id,
+      question,
+      choices,
+      correctAnswer,
+      rationale,
+      courseNumber,
+      level,
+      topics,
+      bloom
+    });
   }
 
   return questions;
 }
 
-async function parsePdfToJson(pdfBuffer) {
-  const data = await pdfParse(pdfBuffer);
-  return extractQuestionsFromText(data.text);
-}
-
-module.exports = { parsePdfToJson };
+module.exports = parseQuestionsFromPDF;
