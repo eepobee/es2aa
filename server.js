@@ -11,7 +11,7 @@ const upload = multer({ dest: path.join(__dirname, 'uploads') });
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
-app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
+app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
   try {
     console.log('Received file:', req.file); // Debug: log uploaded file
 
