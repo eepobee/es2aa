@@ -9,10 +9,8 @@
 <body>
   <div class="container">
     <h1>ExamSoft → Atomic Assessments</h1>
-    <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>
-    
-    <form action="http://jeffedu.site/tools/es2aa/upload" method="post" enctype="multipart/form-data">
-
+    <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>    
+    <form action="/tools/es2aa/upload" method="post" enctype="multipart/form-data">
       <input type="file" name="pdf" accept="application/pdf" required>
       <button type="submit">Upload and Convert</button>
     </form>
