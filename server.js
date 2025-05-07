@@ -1,10 +1,10 @@
-// server.js
+// File: server.js
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const parseQuestionsFromPDF = require('./parsers/regexParser');
+const { parsePdfToJson } = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -14,21 +14,20 @@ app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 app.post('/tools/es2aa/upload', upload.single('pdf'), async (req, res) => {
   try {
     const pdfBuffer = fs.readFileSync(req.file.path);
-    const questions = await parseQuestionsFromPDF(pdfBuffer);
+    const questions = await parsePdfToJson(pdfBuffer);
 
     const csvRows = questions.map(q => ({
-      Title: q.id || '',
-      'Question Text': q.question || '',
-      'Choice A': q.choices?.[0] || '',
-      'Choice B': q.choices?.[1] || '',
-      'Choice C': q.choices?.[2] || '',
-      'Choice D': q.choices?.[3] || '',
-      'Correct Answer': q.correctAnswer || '',
-      Topics: q.topics ? q.topics.join(', ') : '',
-      "Bloom's Taxonomy": q.bloom || '',
-      'Tag: Level': q.level || '',
-      'Course Number': q.courseNumber || '',
-      Feedback: q.rationale || ''
+      Title: q.Title || '',
+      'Question Text': q.Question || '',
+      'Choice A': q.OptionA || '',
+      'Choice B': q.OptionB || '',
+      'Choice C': q.OptionC || '',
+      'Choice D': q.OptionD || '',
+      'Correct Answer': q.Correct || '',
+      Topics: q.Topic || '',
+      "Bloom's Taxonomy": q.Bloom || '',
+      'Tag: Level': q.Level || '',
+      Feedback: q.Feedback || ''
     }));
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
