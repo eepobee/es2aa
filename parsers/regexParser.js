@@ -25,16 +25,16 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[1] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    const questionMatch = block.match(/(?:Question #:\s*\d+\s*)?(.+?)(?=\na\.|\na\))/s);
+    const questionMatch = block.match(/^(.*?)(?:\nA\.|\nA\))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
     const choices = [];
-    const choiceMatch = block.match(/a\.\s*(.+?)\s*b\.\s*(.+?)\s*c\.\s*(.+?)\s*d\.\s*(.+?)(?:\n|$)/s);
+    const choiceMatch = block.match(/A\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nD\.\s*(.*?)(?:\n|$)/s);
     if (choiceMatch) {
       choices.push(choiceMatch[1], choiceMatch[2], choiceMatch[3], choiceMatch[4]);
     }
 
-    const correctMatch = block.match(/✓\s*([a-d])\./i);
+    const correctMatch = block.match(/✓\s*([A-D])\./);
     const correctLetter = correctMatch ? correctMatch[1].toLowerCase() : '';
     const correctAnswer = correctLetter && choices.length === 4 ? choices['abcd'.indexOf(correctLetter)] : '';
 
