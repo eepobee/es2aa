@@ -1,8 +1,9 @@
-// parsers/regexParser.js
+// File: parsers/regexParser.js
+
 const pdfParse = require('pdf-parse');
 
 function getLevelFromCourse(course) {
-  const match = course.match(/NU\s*(\d+)/i);
+  const match = course.match(/NU\s*(\d{3})/i);
   if (!match) return '';
   const num = parseInt(match[1], 10);
   if (num >= 100 && num <= 399) return 'Undergraduate';
@@ -21,35 +22,33 @@ async function parseQuestionsFromPDF(buffer) {
     const idMatch = block.match(/Item ID:\s*(\d+)/);
     const id = idMatch ? idMatch[1] : '';
 
-    const courseMatch = block.match(/Course Number:\s*(NU\s*\d+)/i);
-    const courseNumber = courseMatch ? courseMatch[1] : '';
+    const courseMatch = block.match(/NU\s*(\d{3})/);
+    const courseNumber = courseMatch ? `NU ${courseMatch[1]}` : '';
     const level = getLevelFromCourse(courseNumber);
 
-    const questionMatch = block.match(/^(.*?)(?:\nA\.|\nA\))/s);
+    const questionMatch = block.match(/^(.*?)(?=\n[ABCD]\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    const choices = [];
-    const choiceMatch = block.match(/A\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nD\.\s*(.*?)(?:\n|$)/s);
-    if (choiceMatch) {
-      choices.push(choiceMatch[1], choiceMatch[2], choiceMatch[3], choiceMatch[4]);
-    }
+    const choicesMatch = block.match(/A\.\s*(.*?)\nB\.\s*(.*?)\nC\.\s*(.*?)\nD\.\s*(.*?)(?=\n|$)/s);
+    const choices = choicesMatch ? [choicesMatch[1], choicesMatch[2], choicesMatch[3], choicesMatch[4]] : [];
 
-    const correctMatch = block.match(/✓\s*([A-D])\./);
-    const correctLetter = correctMatch ? correctMatch[1].toLowerCase() : '';
-    const correctAnswer = correctLetter && choices.length === 4 ? choices['abcd'.indexOf(correctLetter)] : '';
+    const correctMatch = block.match(/✓\s*([ABCD])\./i);
+    const correctIndex = correctMatch ? 'ABCD'.indexOf(correctMatch[1].toUpperCase()) : -1;
+    const correctAnswer = correctIndex !== -1 && choices.length === 4 ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?:\n{2,}|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    const categoryMatch = block.match(/Category Name:\s*([\s\S]+?)\n(?:\s*\w+:|$)/);
-    const categoryBlock = categoryMatch ? categoryMatch[1] : '';
-    const topics = categoryBlock
-      .split('\n')
-      .map(line => line.replace(/^\s*\d{2}\s*/, '').trim())
-      .filter(Boolean);
+    // Extract the Category Name section
+    const catSectionMatch = block.match(/Category Name\s+Category Path\n([\s\S]+?)\n\n/);
+    const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(line => line.trim()) : [];
 
-    const bloomMatch = categoryBlock.match(/\b\d{2}\s*([A-Za-z]+)/);
-    const bloom = bloomMatch ? bloomMatch[1] : '';
+    const bloomMatch = catLines.find(line => /^\d{2}\s*-/.test(line));
+    const bloom = bloomMatch || '';
+
+    const topics = catLines
+      .filter(line => line && !/^Imported_/i.test(line) && !/^\d{2}\s*-/.test(line))
+      .join('; ');
 
     questions.push({
       id,
@@ -57,10 +56,10 @@ async function parseQuestionsFromPDF(buffer) {
       choices,
       correctAnswer,
       rationale,
-      courseNumber,
-      level,
+      bloom,
       topics,
-      bloom
+      courseNumber,
+      level
     });
   }
 
