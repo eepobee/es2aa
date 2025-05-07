@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ExamSoft to Atomic Assessments</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>ExamSoft → Atomic Assessments</h1>
+    <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>
+    
+    <form action="http://localhost:3000/tools/es2aa/upload" method="post" enctype="multipart/form-data">
+
+      <input type="file" name="pdf" accept="application/pdf" required>
+      <button type="submit">Upload and Convert</button>
+    </form>
+    
+    <footer>
+      <p>&copy; Jefferson College of Nursing</p>
+    </footer>
+  </div>
+</body>
+</html>
