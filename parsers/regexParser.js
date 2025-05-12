@@ -30,7 +30,7 @@ async function parseQuestionsFromPDF(buffer) {
 const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
 const question = questionMatch ? questionMatch[1].trim() : '';
 
-const choiceRegex = /(?:^|\n)\s*(✓?)\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:✓?)?\s*[A-F]\.|$))/gs;
+    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|$)/g;
     const choices = [];
     let match;
     while ((match = choiceRegex.exec(block)) !== null) {
