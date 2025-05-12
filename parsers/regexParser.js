@@ -26,24 +26,19 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    const questionMatch = block.match(/^(.*?)(?=\n[A-F]\.)/s);
+    const questionMatch = block.match(/^(.*?)(?=\nA\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    // Extract choices dynamically
-    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|Rationale:|Item ID:|\n{2,}|$)/g;
+    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|$)/g;
+    const choices = [];
     let match;
-    const choices = new Array(6).fill('');
     while ((match = choiceRegex.exec(block)) !== null) {
-      const index = 'ABCDEF'.indexOf(match[1]);
-      if (index !== -1) {
-        choices[index] = match[2].trim();
-      }
+      choices[match[1].charCodeAt(0) - 65] = match[2].trim(); // A=0, B=1, etc.
     }
 
-    // Extract correct answer by checkmark
-    const correctMatch = block.match(/✓\s*([A-F])\./);
+    const correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
     const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
-    const correctAnswer = correctIndex !== -1 && choices[correctIndex] ? choices[correctIndex] : '';
+    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
@@ -61,7 +56,7 @@ async function parseQuestionsFromPDF(buffer) {
     questions.push({
       id,
       question,
-      choices: choices.filter(c => c !== ''),
+      choices,
       correctAnswer,
       rationale,
       bloom,
@@ -73,5 +68,6 @@ async function parseQuestionsFromPDF(buffer) {
 
   return questions;
 }
+
 
 module.exports = parseQuestionsFromPDF;
