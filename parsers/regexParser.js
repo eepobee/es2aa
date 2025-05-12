@@ -26,33 +26,24 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    // Extract question text before first labeled choice
-    const questionMatch = block.match(/^(.*?)(?=\n[✓✔]?\s*[A-F]\.)/s);
-    const question = questionMatch ? questionMatch[1].trim() : '';
+   // Extract question text as everything from start until the first A. or ✓A.
+const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
+const question = questionMatch ? questionMatch[1].trim() : '';
 
-    // Extract choices and identify the correct one
-    const choices = {};
-    const choicePattern = /^(?:✓\s*)?([A-F])\.\s*(.+?)(?=\n(?:✓?\s*[A-F]\.|Item ID:|Rationale:|$))/gms;
+    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|$)/g;
+    const choices = [];
     let match;
-    let correctLetter = null;
-
-    while ((match = choicePattern.exec(block)) !== null) {
-      const letter = match[1];
-      const text = match[2].trim();
-      choices[letter] = text;
-      if (/^✓/.test(match[0])) {
-        correctLetter = letter;
-      }
+    while ((match = choiceRegex.exec(block)) !== null) {
+      choices[match[1].charCodeAt(0) - 65] = match[2].trim(); // A=0, B=1, etc.
     }
 
-    const allChoices = ['A', 'B', 'C', 'D', 'E', 'F'].map(label => choices[label] || '');
-    const correctAnswer = correctLetter ? choices[correctLetter] || '' : '';
+    const correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
+    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
+    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
-    // Extract rationale
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    // Extract category data
     const catSectionMatch = block.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
     const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
 
@@ -66,7 +57,7 @@ async function parseQuestionsFromPDF(buffer) {
     questions.push({
       id,
       question,
-      choices: allChoices,
+      choices,
       correctAnswer,
       rationale,
       bloom,
