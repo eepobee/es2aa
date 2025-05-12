@@ -29,26 +29,16 @@ async function parseQuestionsFromPDF(buffer) {
     const questionMatch = block.match(/^(.*?)(?=\nA\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    // Dynamically extract choices A–F
-    const choiceLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|$)/g;
     const choices = [];
-
-    for (let i = 0; i < choiceLabels.length; i++) {
-      const label = choiceLabels[i];
-      const nextLabel = choiceLabels[i + 1];
-      const regex = new RegExp(`${label}\\.\\s*([\\s\\S]*?)\\s*(?=${nextLabel ? nextLabel + '\\.' : '\\n{2,}|$'})`, 'i');
-      const match = block.match(regex);
-      if (match) {
-        choices.push(match[1].trim());
-      } else {
-        break;
-      }
+    let match;
+    while ((match = choiceRegex.exec(block)) !== null) {
+      choices[match[1].charCodeAt(0) - 65] = match[2].trim(); // A=0, B=1, etc.
     }
 
-    // Identify correct answer from ✓ or other symbol in front of label
     const correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
-    const correctIndex = correctMatch ? choiceLabels.indexOf(correctMatch[1].toUpperCase()) : -1;
-    const correctAnswer = correctIndex !== -1 && choices[correctIndex] ? choices[correctIndex] : '';
+    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
+    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
@@ -78,5 +68,6 @@ async function parseQuestionsFromPDF(buffer) {
 
   return questions;
 }
+
 
 module.exports = parseQuestionsFromPDF;
