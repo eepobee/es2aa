@@ -26,28 +26,27 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    // Extract question text as everything from start until the first A. or ✓A.
-    const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
-    const question = questionMatch ? questionMatch[1].trim() : '';
+   // Extract question text as everything from start until the first A. or ✓A.
+const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
+const question = questionMatch ? questionMatch[1].trim() : '';
 
-    // Updated choiceRegex to handle optional checkmarks
-    const choiceRegex = /^\s*[✓✔]?\s*([A-F])\.\s*(.*)/gm;
-    const choices = [];
-    let match;
-    while ((match = choiceRegex.exec(block)) !== null) {
-      const letter = match[1].toUpperCase();
-      const text = match[2].trim();
-      choices['ABCDEF'.indexOf(letter)] = text;
-    }
+const choiceRegex = /(?:^|\n)\s*(✓?)\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:✓?)?\s*[A-F]\.|$))/gs;
+const choices = [];
+let match;
+let correctIndex = -1;
 
-    // First try: checkmark-prefixed lines
-    let correctMatch = block.match(/^\s*[✓✔✗✘✤]\s*([A-F])\./m);
-    if (!correctMatch) {
-      correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./); // Fallback
-    }
-    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
-    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
+while ((match = choiceRegex.exec(block)) !== null) {
+  const isCorrect = match[1] === '✓';
+  const letter = match[2];
+  const text = match[3].trim();
+  const index = 'ABCDEF'.indexOf(letter);
 
+  choices[index] = text;
+  if (isCorrect) correctIndex = index;
+}
+
+const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
+  
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
