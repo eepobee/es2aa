@@ -26,32 +26,28 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    // Extract question text up to first choice label (e.g., A. or ✓A.)
-    const questionMatch = block.match(/^(.*?)(?=\n[✓✔]?\s*[A-F]\.)/s);
+    const questionMatch = block.match(/^(.*?)(?=\n[A-F]\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    // Extract choices flexibly: A. to F., with or without ✓
-    const choices = [];
-    let correctIndex = -1;
-    const choicePattern = /[✓✔]?\s*([A-F])\.\s*([\s\S]*?)(?=\n[✓✔]?\s*[A-F]\.|$)/g;
+    // Extract choices dynamically
+    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|Rationale:|Item ID:|\n{2,}|$)/g;
     let match;
-    while ((match = choicePattern.exec(block)) !== null) {
-      const label = match[1];
-      const text = match[2].trim();
-      choices.push(text);
-
-      if (/^[✓✔]/.test(match[0])) {
-        correctIndex = 'ABCDEF'.indexOf(label);
+    const choices = new Array(6).fill('');
+    while ((match = choiceRegex.exec(block)) !== null) {
+      const index = 'ABCDEF'.indexOf(match[1]);
+      if (index !== -1) {
+        choices[index] = match[2].trim();
       }
     }
 
-    const correctAnswer = correctIndex !== -1 ? choices[correctIndex] : '';
+    // Extract correct answer by checkmark
+    const correctMatch = block.match(/✓\s*([A-F])\./);
+    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
+    const correctAnswer = correctIndex !== -1 && choices[correctIndex] ? choices[correctIndex] : '';
 
-    // Extract rationale
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    // Extract category section
     const catSectionMatch = block.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
     const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
 
@@ -65,7 +61,7 @@ async function parseQuestionsFromPDF(buffer) {
     questions.push({
       id,
       question,
-      choices,
+      choices: choices.filter(c => c !== ''),
       correctAnswer,
       rationale,
       bloom,
