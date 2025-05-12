@@ -18,7 +18,15 @@ async function parseQuestionsFromPDF(buffer) {
 
   const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
 
-  for (const block of rawBlocks) {
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const block = rawBlocks[i];
+
+    // === DEBUG: Show first 5 blocks for troubleshooting ===
+    if (i < 5) {
+      console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
+      console.log(block);
+    }
+
     const idMatch = block.match(/Item ID:\s*(\d+)/);
     const id = idMatch ? idMatch[1] : '';
 
@@ -26,24 +34,32 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-   // Extract question text as everything from start until the first A. or ✓A.
-const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
-const question = questionMatch ? questionMatch[1].trim() : '';
+    // Extract question text
+    const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
+    const question = questionMatch ? questionMatch[1].trim() : '';
 
     const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|$)/g;
     const choices = [];
     let match;
     while ((match = choiceRegex.exec(block)) !== null) {
-      choices[match[1].charCodeAt(0) - 65] = match[2].trim(); // A=0, B=1, etc.
+      choices[match[1].charCodeAt(0) - 65] = match[2].trim();
     }
 
-    let correctMatch = block.match(/^\s*[✓✔✗✘✤]\s*([A-F])\./m); // First try: checkmark-prefixed lines
+    let correctMatch = block.match(/^\s*[✓✔✗✘✤]\s*([A-F])\./m);
+    if (!correctMatch) {
+      correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
+    }
 
-if (!correctMatch) {
-  correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./); // Fallback: loose pattern
-}
     const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
     const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
+
+    // === DEBUG ===
+    if (i < 5) {
+      console.log(`Choices:`, choices);
+      console.log(`CorrectMatch:`, correctMatch ? correctMatch[0] : 'None');
+      console.log(`Correct Index:`, correctIndex);
+      console.log(`Correct Answer:`, correctAnswer);
+    }
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
