@@ -30,16 +30,21 @@ async function parseQuestionsFromPDF(buffer) {
 const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
 const question = questionMatch ? questionMatch[1].trim() : '';
 
-       // Extract choices dynamically
-    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|Rationale:|Item ID:|\n{2,}|$)/g;
-    let match;
-    const choices = new Array(6).fill('');
-    while ((match = choiceRegex.exec(block)) !== null) {
-      const index = 'ABCDEF'.indexOf(match[1]);
-      if (index !== -1) {
-        choices[index] = match[2].trim();
+      // Extract choices flexibly: A. to F., with or without ✓
+      const choices = [];
+      let correctIndex = -1;
+      const choicePattern = /[✓✔]?\s*([A-F])\.\s*([\s\S]*?)(?=\n[✓✔]?\s*[A-F]\.|$)/g;
+      let match;
+      while ((match = choicePattern.exec(block)) !== null) {
+        const label = match[1];
+        const text = match[2].trim();
+        choices.push(text);
+  
+        if (/^[✓✔]/.test(match[0])) {
+          correctIndex = 'ABCDEF'.indexOf(label);
+        }
       }
-    }  
+  
     const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
