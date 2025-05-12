@@ -37,7 +37,7 @@ const question = questionMatch ? questionMatch[1].trim() : '';
       choices[match[1].charCodeAt(0) - 65] = match[2].trim(); // A=0, B=1, etc.
     }
 
-    const correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
+    const correctMatch = block.match(/^\s*✓\s*([A-F])\./m);
     const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
     const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
