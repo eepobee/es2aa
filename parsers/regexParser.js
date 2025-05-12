@@ -26,23 +26,32 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    const questionMatch = block.match(/^(.*?)(?=\nA\.)/s);
+    // Extract question text up to first choice label (e.g., A. or ✓A.)
+    const questionMatch = block.match(/^(.*?)(?=\n[✓✔]?\s*[A-F]\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    const choiceRegex = /([A-F])\.\s*([\s\S]*?)(?=\n[A-F]\.|$)/g;
+    // Extract choices flexibly: A. to F., with or without ✓
     const choices = [];
+    let correctIndex = -1;
+    const choicePattern = /[✓✔]?\s*([A-F])\.\s*([\s\S]*?)(?=\n[✓✔]?\s*[A-F]\.|$)/g;
     let match;
-    while ((match = choiceRegex.exec(block)) !== null) {
-      choices[match[1].charCodeAt(0) - 65] = match[2].trim(); // A=0, B=1, etc.
+    while ((match = choicePattern.exec(block)) !== null) {
+      const label = match[1];
+      const text = match[2].trim();
+      choices.push(text);
+
+      if (/^[✓✔]/.test(match[0])) {
+        correctIndex = 'ABCDEF'.indexOf(label);
+      }
     }
 
-    const correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
-    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
-    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
+    const correctAnswer = correctIndex !== -1 ? choices[correctIndex] : '';
 
+    // Extract rationale
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
+    // Extract category section
     const catSectionMatch = block.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
     const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
 
@@ -68,6 +77,5 @@ async function parseQuestionsFromPDF(buffer) {
 
   return questions;
 }
-
 
 module.exports = parseQuestionsFromPDF;
