@@ -34,29 +34,29 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    // Extract question text
     const questionMatch = block.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
     const choiceRegex = /(?:^|\n)\s*(\d)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*\d?\s*[A-F]\.|$))/gs;
     const choices = [];
     let match;
+    let correctIndex = -1;
+
     while ((match = choiceRegex.exec(block)) !== null) {
-      choices[match[1].charCodeAt(0) - 65] = match[2].trim();
+      const isCorrect = !!match[1]; // "3B." style — if there's a number, it's the correct one
+      const letter = match[2];
+      const text = match[3].trim();
+      const index = 'ABCDEF'.indexOf(letter);
+
+      choices[index] = text;
+      if (isCorrect) correctIndex = index;
     }
 
-    let correctMatch = block.match(/^\s*[✓✔✗✘✤]\s*([A-F])\./m);
-    if (!correctMatch) {
-      correctMatch = block.match(/[^a-zA-Z0-9\s]?\s*([A-F])\./);
-    }
-
-    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
     const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
     // === DEBUG ===
     if (i < 5) {
       console.log(`Choices:`, choices);
-      console.log(`CorrectMatch:`, correctMatch ? correctMatch[0] : 'None');
       console.log(`Correct Index:`, correctIndex);
       console.log(`Correct Answer:`, correctAnswer);
     }
