@@ -40,9 +40,7 @@ const question = questionMatch ? questionMatch[1].trim() : '';
         choices[index] = match[2].trim();
       }
     }  
-    const correctMatch = block.match(/✓\s*([A-F])\./);
-    const correctIndex = correctMatch ? 'ABCDEF'.indexOf(correctMatch[1].toUpperCase()) : -1;
-    const correctAnswer = correctIndex !== -1 && choices[correctIndex] ? choices[correctIndex] : '';
+    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
     const rationaleMatch = block.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
