@@ -20,20 +20,26 @@ app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
 
     console.log('Parsed questions:', questions); // Debug: log parsed output
 
-    const csvRows = questions.map(q => ({
-      Title: q.id || '',
-      'Question Text': q.question || '',
-      'Choice A': q.choices?.[0] || '',
-      'Choice B': q.choices?.[1] || '',
-      'Choice C': q.choices?.[2] || '',
-      'Choice D': q.choices?.[3] || '',
-      'Correct Answer': q.correctAnswer || '',
-      'Tag: Topics': q.topics || '',
-      "Tag: Bloom's": q.bloom || '',
-      'Tag: Level': q.level || '',
-      'Tag: Course #': q.courseNumber || '',
-      Feedback: q.rationale || ''
-    }));
+    const csvRows = questions.map(q => {
+      const row = {
+        Title: q.id || '',
+        'Question Text': q.question || '',
+        'Correct Answer': q.correctAnswer || '',
+        'Tag: Topics': q.topics || '',
+        "Tag: Bloom's": q.bloom || '',
+        'Tag: Level': q.level || '',
+        'Tag: Course #': q.courseNumber || '',
+        Feedback: q.rationale || ''
+      };
+    
+      // Add dynamic choices (A–F)
+      const choiceLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
+      choiceLabels.forEach((label, index) => {
+        row[`Choice ${label}`] = q.choices?.[index] || '';
+      });
+    
+      return row;
+    }); 
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
