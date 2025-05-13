@@ -35,7 +35,7 @@ app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
       // Add dynamic choices (A–F)
       const choiceLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
       choiceLabels.forEach((label, index) => {
-        row[`Choice ${label}`] = q.choices?.[index] || '';
+        row[`Option ${label}`] = q.choices?.[index] || '';
       });
     
       return row;
