@@ -13,22 +13,10 @@ function getLevelFromCourse(course) {
 
 async function parseQuestionsFromPDF(buffer) {
   const data = await pdfParse(buffer);
-
-  // Normalize page-break newlines but preserve real answer lines (A., B., ✓C., etc.)
-  const text = data.text.replace(/\r?\n(?=[^\nA-F✓\d])/g, ' ');
-
+  const text = data.text;
   const questions = [];
 
-  // Extract only question blocks (Question #: <n> up to first choice like A./✓B./3C.)
-  const rawBlocks = [];
-  const questionBlockRegex = /Question #:\s*\d+\s*\n([\s\S]*?)(?=\n\s*\d?\s*[✓]?\s*[A-F]\.)/g;
-  let match;
-  while ((match = questionBlockRegex.exec(text)) !== null) {
-    const block = match[1].trim();
-    if (block.length > 20) {
-      rawBlocks.push(block);
-    }
-  }
+  const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
 
   for (let i = 0; i < rawBlocks.length; i++) {
     let block = rawBlocks[i];
@@ -49,18 +37,18 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    // We already extracted only the question text; just use the whole cleanedBlock
-    const question = cleanedBlock.trim();
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
+    const question = questionMatch ? questionMatch[1].trim() : '';
 
     const choiceRegex = /(?:^|\n)\s*(\d)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*\d?\s*[A-F]\.|$))/gs;
     const choices = [];
-    let matchChoice;
+    let match;
     let correctIndex = -1;
 
-    while ((matchChoice = choiceRegex.exec(cleanedBlock)) !== null) {
-      const isCorrect = !!matchChoice[1]; // "3B." style — if there's a number, it's the correct one
-      const letter = matchChoice[2];
-      const text = matchChoice[3].trim();
+    while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
+      const isCorrect = !!match[1]; // "3B." style — if there's a number, it's the correct one
+      const letter = match[2];
+      const text = match[3].trim();
       const index = 'ABCDEF'.indexOf(letter);
 
       choices[index] = text;
