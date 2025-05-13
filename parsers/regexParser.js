@@ -71,8 +71,13 @@ async function parseQuestionsFromPDF(buffer) {
     const bloom = bloomLine || '';
 
     const topics = catLines
-      .filter(line => line && !/^Imported_/i.test(line) && !/^\d{2}\s*-/.test(line))
-      .join('; ');
+  .filter(line =>
+    line &&
+    !/Import(ed|s)/i.test(line) &&
+    !/^\d{2}\s*-/.test(line) &&
+    !/Topical Categories by Course/i.test(line)
+  )
+  .join('; ');
 
     questions.push({
       id,
