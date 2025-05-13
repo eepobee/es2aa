@@ -29,7 +29,7 @@ app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
         "Tag: Bloom's": q.bloom || '',
         'Tag: Level': q.level || '',
         'Tag: Course #': q.courseNumber || '',
-        Feedback: q.rationale || ''
+        'Correct Feedback': q.rationale || ''
       };
     
       // Add dynamic choices (A–F)
