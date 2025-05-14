@@ -40,12 +40,16 @@ function parseXLSXMetadata(filePath) {
     const level = course ? getLevel(course) : '';
 
     let nclex = '';
-    for (const domain of NCLEX_DOMAINS) {
-      if (categories.includes(domain)) {
-        nclex = domain === 'Reduction of Risk Potentia' ? 'Reduction of Risk Potential' : domain;
-        break;
-      }
-    }
+    if (categories.includes(domain)) {
+  if (domain === 'Reduction of Risk Potentia') {
+    nclex = 'Reduction of Risk Potential';
+    exclusions.push('Reduction of Risk Potentia'); // prevent it from leaking into topics
+  } else {
+    nclex = domain;
+    exclusions.push(domain);
+  }
+  break;
+}
 
     const exclusions = [bloom, course, nclex];
     const topics = categories.split(',').map(s => s.trim())
