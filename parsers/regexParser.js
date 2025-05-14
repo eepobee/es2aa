@@ -18,13 +18,18 @@ async function parseQuestionsFromPDF(buffer) {
 
   const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
 
-  for (let i = 0; i < rawBlocks.length; i++) {
-    let block = rawBlocks[i];
+for (let i = 0; i < rawBlocks.length; i++) {
+  const block = rawBlocks[i];
+  const nextBlock = rawBlocks[i + 1] || ''; // lookahead for category metadata
 
-    if (i < 5) {
-      console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
-      console.log(block);
-    }
+  if (i < 5) {
+    console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
+    console.log(block);
+
+    console.log(`\n===== RAW CATEGORY BLOCK ${i + 1} (from next block) =====\n`);
+    const catMatch = nextBlock.match(/Category NameCategory Path([\s\S]*?)(?:\n{2,}|Item Creator:)/i);
+    console.log(catMatch ? catMatch[1] : '[NO CATEGORY DATA FOUND]');
+  }
 
     // Strip trailing metadata that bleeds into choices
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
