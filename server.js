@@ -34,12 +34,11 @@ app.post('/tools/es2aa/uploads', upload.fields([
       const correctLetter = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
 
       const row = {
-  Title: q.id || '',
-  'Question ID': q.id
+     'Question ID': q.id
     ? (meta.level === 'Undergraduate' ? 'U' : meta.level === 'Graduate' ? 'G' : '') + q.id
     : '',
-
-  'Question Text': q.question || '',
+        Title: q.id || '',
+   'Question Text': q.question || '',
   'Correct Answer': q.correctAnswer || '',
   'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
   'Tag: Topics': meta.topics || '',
