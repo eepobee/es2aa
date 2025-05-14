@@ -25,14 +25,27 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
     let metadataMap = {};
     if (xlsxPath) {
-      metadataMap = await parseXLSXMetadata(xlsxPath); // returns object by ID
-    }
+  metadataMap = await parseXLSXMetadata(xlsxPath);
+}
 
-    const csvRows = questions.map(q => {
+// Get fallback course/level from first match
+let fallbackCourse = '';
+let fallbackLevel = '';
+for (const meta of Object.values(metadataMap)) {
+  if (meta.course && meta.level) {
+    fallbackCourse = meta.course;
+    fallbackLevel = meta.level;
+    break;
+  }
+}
+
+const csvRows = questions.map(q => {
   const meta = metadataMap[q.id] || {};
-  const level = meta.level || '';
+
+  const level = meta.level || fallbackLevel;
+  const course = meta.course || fallbackCourse;
   const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
-  
+
   const row = {
     'Question ID': q.id ? prefix + q.id : '',
     Title: q.id || '',
@@ -43,7 +56,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
     "Tag: Bloom's": meta.bloom || '',
     'Tag: Level': level,
     'Tag: NCLEX': meta.nclex || '',
-    'Tag: Course #': meta.course || '',
+    'Tag: Course #': course,
     'Correct Feedback': meta.feedback || ''
   };
 
