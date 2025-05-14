@@ -27,6 +27,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       metadataMap = await parseXLSXMetadata(xlsxPath);
     }
 
+    // Fallback level/course
     let fallbackCourse = '';
     let fallbackLevel = '';
     for (const meta of Object.values(metadataMap)) {
@@ -37,7 +38,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     }
 
-    // Build core rows
+    // === Step 1: Build rows
     let csvRows = questions.map(q => {
       const meta = metadataMap[q.id] || {};
       const level = meta.level || fallbackLevel;
@@ -64,80 +65,62 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
       return row;
     });
-  
-// === Identify all unique topics across all rows ===
-const uniqueTopics = new Set();
 
-csvRows.forEach(row => {
-  (row['Tag: Topics'] || '')
-    .split(/[,;]+/)
-    .map(t => t.trim())
-    .filter(Boolean)
-    .forEach(topic => uniqueTopics.add(topic));
-});
+    // === Step 2: Extract unique topics
+    const uniqueTopics = new Set();
+    csvRows.forEach(row => {
+      (row['Tag: Topics'] || '')
+        .split(/[,;]+/)
+        .map(t => t.trim())
+        .filter(Boolean)
+        .forEach(t => uniqueTopics.add(t));
+    });
+    const topicArray = Array.from(uniqueTopics).sort();
 
-const sortedTopics = Array.from(uniqueTopics).sort();
+    // === Step 3: Add 1 column per topic, all labeled "Tag: Topic"
+    csvRows = csvRows.map(row => {
+      const topics = (row['Tag: Topics'] || '')
+        .split(/[,;]+/)
+        .map(t => t.trim());
 
-// === Expand each topic into a dedicated column labeled "Tag: Topic"
-csvRows = csvRows.map(row => {
-  const rowTopics = (row['Tag: Topics'] || '')
-    .split(/[,;]+/)
-    .map(t => t.trim());
+      delete row['Tag: Topics'];
 
-  delete row['Tag: Topics'];
+      topicArray.forEach(topic => {
+        row['Tag: Topic ' + topic] = topics.includes(topic) ? topic : '';
+      });
 
-  sortedTopics.forEach(topic => {
-    row['Tag: Topic'] = row['Tag: Topic'] || {}; // init placeholder
-    row['Tag: Topic'][topic] = rowTopics.includes(topic) ? topic : '';
-  });
+      return row;
+    });
 
-  return row;
-});
+    // === Step 4: Ensure all dynamic topic columns have identical label
+    const topicHeaders = topicArray.map(() => 'Tag: Topic');
 
-// === Flatten topic objects into consistent columns
-csvRows = csvRows.map(row => {
-  const topicData = row['Tag: Topic'];
-  delete row['Tag: Topic'];
-
-  sortedTopics.forEach((topic, i) => {
-    const columnLabel = 'Tag: Topic';
-    row[columnLabel + (i > 0 ? ` ${i + 1}` : '')] = topicData?.[topic] || '';
-  });
-
-  return row;
-});
-
-    // Generate headers manually to force identical column labels
-    const standardHeaders = [
+    const staticHeaders = [
       'Question ID', 'Title', 'Question Text', 'Correct Answer', 'Question Type',
       "Tag: Bloom's", 'Tag: Level', 'Tag: NCLEX', 'Tag: Course #', 'Correct Feedback',
       'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F'
     ];
 
-    const maxTopicCols = Math.max(...csvRows.map(row =>
-      Object.keys(row).filter(k => k.startsWith('Tag: Topic')).length
-    ));
+    const allHeaders = [...staticHeaders, ...topicHeaders];
 
-    const topicHeaders = Array(maxTopicCols).fill('Tag: Topic');
-    const allHeaders = [...standardHeaders, ...topicHeaders];
-
+    // === Step 5: Stream CSV
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
 
     const csvStream = csvWriter.format({ headers: allHeaders });
     csvStream.pipe(res);
+
     csvRows.forEach(row => {
-      const flatRow = { ...row };
+      const reordered = {};
 
-      // Re-key 'Tag: Topic 0', 'Tag: Topic 1'... into multiple 'Tag: Topic'
-      for (let i = 0; i < maxTopicCols; i++) {
-        flatRow[`Tag: Topic ${i}`] = row[`Tag: Topic ${i}`] || '';
-      }
+      // flatten back to consistent label structure
+      staticHeaders.forEach(key => reordered[key] = row[key] || '');
+      topicArray.forEach(topic => reordered['Tag: Topic'] = row['Tag: Topic ' + topic] || '');
 
-      csvStream.write(flatRow);
+      csvStream.write(reordered);
     });
-    csvStream.end();
 
+    csvStream.end();
     fs.unlinkSync(pdfPath);
     if (xlsxPath) fs.unlinkSync(xlsxPath);
   } catch (err) {
