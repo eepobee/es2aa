@@ -64,22 +64,35 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
       return row;
     });
+  
+   // === Identify all unique topics from all rows ===
+const allTopics = new Set();
+csvRows.forEach(row => {
+  (row['Tag: Topics'] || '')
+    .split(/[,;]+/)
+    .map(t => t.trim())
+    .filter(Boolean)
+    .forEach(topic => allTopics.add(topic));
+});
+const sortedTopics = Array.from(allTopics).sort();
 
-    // Flatten 'Tag: Topics' into multiple 'Tag: Topic' columns
-    csvRows = csvRows.map(row => {
-      const topicValues = (row['Tag: Topics'] || '')
-        .split(/[,;]+/)
-        .map(t => t.trim())
-        .filter(Boolean);
+// === Create columns: one for each unique topic with header "Tag: Topic" ===
+csvRows = csvRows.map(row => {
+  const rowTopics = (row['Tag: Topics'] || '')
+    .split(/[,;]+/)
+    .map(t => t.trim());
 
-      delete row['Tag: Topics'];
+  // Delete the original combined field
+  delete row['Tag: Topics'];
 
-      topicValues.forEach((topic, i) => {
-        row[`Tag: Topic ${i}`] = topic;
-      });
+  // Add each topic as its own "Tag: Topic" column
+  sortedTopics.forEach((topic, i) => {
+    const colLabel = 'Tag: Topic';
+    row[`${colLabel}${i > 0 ? ` ${i + 1}` : ''}`] = rowTopics.includes(topic) ? topic : '';
+  });
 
-      return row;
-    });
+  return row;
+});
 
     // Generate headers manually to force identical column labels
     const standardHeaders = [
