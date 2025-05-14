@@ -22,7 +22,7 @@ async function parseQuestionsFromPDF(buffer) {
     const question = questionMatch ? questionMatch[1].trim() : '';
     console.log(`\n[Q${questionNum}] Question: ${question}`);
 
-    const choiceRegex = /(?:^|\n)\s*(\d+|✓)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d+|✓)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|Attachment:|$))/gs;
+    const choiceRegex = /(?:^|\n)\s*(\d+|✓)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d+|✓)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
 
     const choices = [];
     let match;
