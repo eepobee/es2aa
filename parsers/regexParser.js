@@ -67,20 +67,32 @@ async function parseQuestionsFromPDF(buffer) {
     const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    const catSectionMatch = cleanedBlock.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
-    const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
+    const catSectionMatch = cleanedBlock.match(
+  /Item Categories:\s*\n([\s\S]*?)(?=\n(?:Item Creator:|Item Psychometrics:|Question #:|$))/i
+);
+
+const catLines = catSectionMatch
+  ? catSectionMatch[1]
+      .split('\n')
+      .map(l => l.trim())
+      .filter(line =>
+        line &&                                         // not empty
+        line.includes('|') &&                          // must be table-like
+        !/Category Name.*Category Path/i.test(line)     // skip header
+      )
+  : [];
 
     const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
     const bloom = bloomLine || '';
 
     const topics = catLines
-      .filter(line =>
-        line &&
-        !/Import(ed|s)/i.test(line) &&
-        !/^\d{2}\s*-/.test(line) &&
-        !/Topical Categories by Course/i.test(line)
-      )
-      .join('; ');
+  .flatMap(line => line.split('|').map(cell => cell.trim())) // both columns
+  .filter(cell =>
+    cell &&
+    !/Topical Categories by Course/i.test(cell) &&
+    !/Import(ed|s)/i.test(cell)
+  )
+  .join('; ');
 
     questions.push({
       id,
