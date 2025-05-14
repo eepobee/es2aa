@@ -22,7 +22,7 @@ for (let i = 0; i < rawBlocks.length; i++) {
   const block = rawBlocks[i];
   const nextBlock = rawBlocks[i + 1] || ''; // lookahead for category metadata
 
-  if (i < 5) {
+  if (i < 12) {
     console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
     console.log(block);
 
