@@ -16,22 +16,21 @@ async function parseQuestionsFromPDF(buffer) {
   const text = data.text;
   const questions = [];
 
-  const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
+  const rawBlocks = text.split(/(?=Question #:\s*\d+)/).filter(q => q.trim().length > 20);
 
-for (let i = 0; i < rawBlocks.length; i++) {
-  const block = rawBlocks[i];
-  const nextBlock = rawBlocks[i + 1] || ''; // lookahead for category metadata
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const block = rawBlocks[i];
+    const nextBlock = rawBlocks[i + 1] || '';
 
-  if (i < 12) {
-    console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
-    console.log(block);
+    if (i < 12) {
+      console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
+      console.log(block);
 
-    console.log(`\n===== RAW CATEGORY BLOCK ${i + 1} (from next block) =====\n`);
-    const catMatch = nextBlock.match(/Category NameCategory Path([\s\S]*?)(?:\n{2,}|Item Creator:)/i);
-    console.log(catMatch ? catMatch[1] : '[NO CATEGORY DATA FOUND]');
-  }
+      console.log(`\n===== RAW CATEGORY BLOCK ${i + 1} (from next block) =====\n`);
+      const catMatch = nextBlock.match(/Category NameCategory Path([\s\S]*?)(?:\n{2,}|Item Creator:)/i);
+      console.log(catMatch ? catMatch[1] : '[NO CATEGORY DATA FOUND]');
+    }
 
-    // Strip trailing metadata that bleeds into choices
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
     const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
@@ -41,18 +40,16 @@ for (let i = 0; i < rawBlocks.length; i++) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    // === Extract question text up until first A. or ✓A.
     const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d?\s*[✓]?\s*[A-F]\.))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    // === Extract answer options ===
     const choiceRegex = /(?:^|\n)\s*(\d)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*\d?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
     const choices = [];
     let match;
     let correctIndex = -1;
 
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-      const isCorrect = !!match[1]; // Has a number prefix like 3D.
+      const isCorrect = !!match[1];
       const letter = match[2];
       const text = match[3].trim();
       const index = 'ABCDEF'.indexOf(letter);
@@ -61,14 +58,14 @@ for (let i = 0; i < rawBlocks.length; i++) {
       if (isCorrect) correctIndex = index;
     }
 
-    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
+    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length
+      ? choices[correctIndex].split('\n')[0].trim()
+      : '';
 
-    // === Extract rationale cleanly ===
     const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|Item Categories:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    // === Extract category lines from anywhere ===
-    const categoryTailMatch = cleanedBlock.match(/Category NameCategory Path([\s\S]*?)\n{2,}|Item Creator:/i);
+    const categoryTailMatch = nextBlock.match(/Category NameCategory Path([\s\S]*?)(?:\n{2,}|Item Creator:)/i);
     let catLines = [];
 
     if (categoryTailMatch && categoryTailMatch[1]) {
