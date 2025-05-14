@@ -103,26 +103,17 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
     csvRows.forEach(row => {
       const flattened = { ...row };
-      const topicValues = flattened['Tag: Topic'] || [];
+     const reordered = {};
+let topicIndex = 0;
 
-      // Remove the array-based column
-      delete flattened['Tag: Topic'];
-
-      // Add each column value explicitly
-      topicValues.forEach((value, i) => {
-        flattened[`Tag: Topic ${i}`] = value;
-      });
-
-      // Rename keys back to 'Tag: Topic' for identical column labels
-      const reordered = {};
-      allHeaders.forEach(h => {
-        if (h === 'Tag: Topic') {
-          const topicValue = topicValues.shift();
-          reordered[h] = topicValue || '';
-        } else {
-          reordered[h] = flattened[h] || '';
-        }
-      });
+allHeaders.forEach(h => {
+  if (h === 'Tag: Topic') {
+    const currentTopic = uniqueTopics[topicIndex++];
+    reordered[h] = row._topics.includes(currentTopic) ? currentTopic : '';
+  } else {
+    reordered[h] = row[h] || '';
+  }
+});
 
       csvStream.write(reordered);
     });
