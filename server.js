@@ -27,7 +27,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       metadataMap = await parseXLSXMetadata(xlsxPath);
     }
 
-    // Get fallback level and course
+    // Fallback level/course
     let fallbackCourse = '';
     let fallbackLevel = '';
     for (const meta of Object.values(metadataMap)) {
@@ -38,8 +38,8 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     }
 
-    // STEP 1: Build rows with core + topic array
-    let csvRows = questions.map(q => {
+    // STEP 1: Build rows with metadata
+    const csvRows = questions.map(q => {
       const meta = metadataMap[q.id] || {};
       const level = meta.level || fallbackLevel;
       const course = meta.course || fallbackCourse;
@@ -55,35 +55,36 @@ app.post('/tools/es2aa/uploads', upload.fields([
         'Tag: Level': level,
         'Tag: NCLEX': meta.nclex || '',
         'Tag: Course #': course,
-        'Correct Feedback': meta.feedback || ''
+        'Correct Feedback': meta.feedback || '',
+        _topics: (meta.topics || '')
+          .split(/[,;]+/)
+          .map(t => t.trim())
+          .filter(Boolean)
       };
 
       ['A', 'B', 'C', 'D', 'E', 'F'].forEach((label, i) => {
         row[`Option ${label}`] = q.choices?.[i] || '';
       });
 
-      // Collect topics for later expansion
-      row._topics = (meta.topics || '')
-        .split(/[,;]+/)
-        .map(t => t.trim())
-        .filter(Boolean);
-
       return row;
     });
 
-    // STEP 2: Get unique topics
-    const uniqueTopics = Array.from(new Set(csvRows.flatMap(row => row._topics))).sort();
+    // STEP 2: Get all unique topics
+    const uniqueTopics = Array.from(
+      new Set(csvRows.flatMap(row => row._topics))
+    ).sort();
 
-    // STEP 3: Add a "Tag: Topic" column for each topic
+    // STEP 3: Write headers
     const staticHeaders = [
       'Question ID', 'Title', 'Question Text', 'Correct Answer', 'Question Type',
       "Tag: Bloom's", 'Tag: Level', 'Tag: NCLEX', 'Tag: Course #', 'Correct Feedback',
       'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F'
     ];
+
     const topicHeaders = uniqueTopics.map(() => 'Tag: Topic');
     const allHeaders = [...staticHeaders, ...topicHeaders];
 
-    // STEP 4: Stream CSV
+    // STEP 4: Output CSV
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
 
@@ -91,30 +92,26 @@ app.post('/tools/es2aa/uploads', upload.fields([
     csvStream.pipe(res);
 
     csvRows.forEach(row => {
-      const outRow = { ...row };
-      delete outRow._topics;
+      const outRow = {};
 
-      // Add each topic column based on match
+      // Add all static fields
+      staticHeaders.forEach(h => {
+        outRow[h] = row[h] || '';
+      });
+
+      // Add each topic in its own "Tag: Topic" column
       uniqueTopics.forEach((topic, i) => {
-        const colKey = `__topic${i}`;
-        outRow[colKey] = row._topics.includes(topic) ? topic : '';
+        const header = topicHeaders[i];
+        const match = row._topics.includes(topic);
+        outRow[header] = match ? topic : '';
       });
 
-      // Flatten for output with repeated "Tag: Topic" keys
-      const finalRow = {};
-      allHeaders.forEach((key, i) => {
-        if (key === 'Tag: Topic') {
-          const colKey = `__topic${i - staticHeaders.length}`;
-          finalRow[key] = outRow[colKey] || '';
-        } else {
-          finalRow[key] = outRow[key] || '';
-        }
-      });
-
-      csvStream.write(finalRow);
+      csvStream.write(outRow);
     });
 
     csvStream.end();
+
+    // Cleanup
     fs.unlinkSync(pdfPath);
     if (xlsxPath) fs.unlinkSync(xlsxPath);
   } catch (err) {
