@@ -26,6 +26,7 @@ async function parseQuestionsFromPDF(buffer) {
       console.log(block);
     }
 
+    // Strip trailing metadata that bleeds into choices
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
     const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
@@ -35,47 +36,45 @@ async function parseQuestionsFromPDF(buffer) {
     const courseNumber = courseMatch ? courseMatch[0] : '';
     const level = getLevelFromCourse(courseNumber);
 
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:[✓]?\s*[A-F]\.))/s);
+    // === Extract question text up until first A. or ✓A.
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d?\s*[✓]?\s*[A-F]\.))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
-    const choiceRegex = /(?:^|\n)\s*(\d)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*\d?\s*[A-F]\.|$))/gs;
+    // === Extract answer options ===
+    const choiceRegex = /(?:^|\n)\s*(\d)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*\d?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
     const choices = [];
     let match;
     let correctIndex = -1;
 
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-      const isCorrect = !!match[1];
+      const isCorrect = !!match[1]; // Has a number prefix like 3D.
       const letter = match[2];
       const text = match[3].trim();
       const index = 'ABCDEF'.indexOf(letter);
+
       choices[index] = text;
       if (isCorrect) correctIndex = index;
     }
 
     const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
-    if (i < 5) {
-      console.log(`Choices:`, choices);
-      console.log(`Correct Index:`, correctIndex);
-      console.log(`Correct Answer:`, correctAnswer);
-    }
-
-    const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
+    // === Extract rationale cleanly ===
+    const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|Item Categories:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    // === Extract category content from trailing lines ===
+    // === Extract category lines from anywhere ===
     const categoryTailMatch = cleanedBlock.match(/Category NameCategory Path([\s\S]*?)\n{2,}|Item Creator:/i);
     let catLines = [];
 
-if (categoryTailMatch && categoryTailMatch[1]) {
-  catLines = categoryTailMatch[1]
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line =>
-      line &&
-      !/Category Name.*Category Path/i.test(line)
-    );
-}
+    if (categoryTailMatch && categoryTailMatch[1]) {
+      catLines = categoryTailMatch[1]
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line =>
+          line &&
+          !/Category Name.*Category Path/i.test(line)
+        );
+    }
 
     const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
     const bloom = bloomLine || '';
@@ -85,9 +84,16 @@ if (categoryTailMatch && categoryTailMatch[1]) {
       .filter(cell =>
         cell &&
         !/Topical Categories by Course/i.test(cell) &&
-        !/Import(ed|s)/i.test(cell)
+        !/Import(ed|s)/i.test(cell) &&
+        !/^\d{2}\s*-/.test(cell) &&
+        !/NU\s*\d{3}/.test(cell) &&
+        !/Bloom.?s?/i.test(cell) &&
+        !/NCLEX/i.test(cell)
       )
       .join('; ');
+
+    const nclexLine = catLines.find(line => /NCLEX( test plan)?\\/.test(line));
+    const nclex = nclexLine ? nclexLine.split('\\')[1]?.trim() || '' : '';
 
     questions.push({
       id,
@@ -97,6 +103,7 @@ if (categoryTailMatch && categoryTailMatch[1]) {
       rationale,
       bloom,
       topics,
+      nclex,
       courseNumber,
       level
     });

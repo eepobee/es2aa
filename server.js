@@ -28,6 +28,7 @@ app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
         'Tag: Topics': q.topics || '',
         "Tag: Bloom's": q.bloom || '',
         'Tag: Level': q.level || '',
+        'Tag: NCLEX': q.nclex || '',
         'Tag: Course #': q.courseNumber || '',
         'Correct Feedback': q.rationale || ''
       };
