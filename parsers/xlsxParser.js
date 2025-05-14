@@ -16,7 +16,7 @@ const NCLEX_DOMAINS = [
   'Management of Care',
   'Medical Calculations',
   'Pharmalogical and Parenteral Therapies',
-  'Physiological Adaption',
+  'Physiological Adaptation',
   'Psychosocial Integrity',
   'Reduction of Risk Potentia', // will normalize this below
   'Safety and Infection Control'
