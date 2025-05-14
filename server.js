@@ -5,9 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
+const parseXLSXMetadata = require('./parsers/xlsxParser');
+
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-const parseXLSXMetadata = require('./parsers/xlsxParser');
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
@@ -18,7 +19,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
   try {
     const pdfPath = req.files?.pdf?.[0]?.path;
     const xlsxPath = req.files?.xlsx?.[0]?.path;
-
     const pdfBuffer = fs.readFileSync(pdfPath);
     const questions = await parseQuestionsFromPDF(pdfBuffer);
 
@@ -27,7 +27,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       metadataMap = await parseXLSXMetadata(xlsxPath);
     }
 
-    // Fallback level/course
+    // Get fallback level and course
     let fallbackCourse = '';
     let fallbackLevel = '';
     for (const meta of Object.values(metadataMap)) {
@@ -38,7 +38,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     }
 
-    // === Step 1: Build rows
+    // === STEP 1: Build rows with base structure ===
     let csvRows = questions.map(q => {
       const meta = metadataMap[q.id] || {};
       const level = meta.level || fallbackLevel;
@@ -51,7 +51,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
         'Question Text': q.question || '',
         'Correct Answer': q.correctAnswer || '',
         'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
-        'Tag: Topics': meta.topics || '',
         "Tag: Bloom's": meta.bloom || '',
         'Tag: Level': level,
         'Tag: NCLEX': meta.nclex || '',
@@ -63,47 +62,39 @@ app.post('/tools/es2aa/uploads', upload.fields([
         row[`Option ${label}`] = q.choices?.[i] || '';
       });
 
-      return row;
-    });
-
-    // === Step 2: Extract unique topics
-    const uniqueTopics = new Set();
-    csvRows.forEach(row => {
-      (row['Tag: Topics'] || '')
+      // Store list of topics temporarily
+      row._topics = (meta.topics || '')
         .split(/[,;]+/)
         .map(t => t.trim())
-        .filter(Boolean)
-        .forEach(t => uniqueTopics.add(t));
-    });
-    const topicArray = Array.from(uniqueTopics).sort();
-
-    // === Step 3: Add 1 column per topic, all labeled "Tag: Topic"
-    csvRows = csvRows.map(row => {
-      const topics = (row['Tag: Topics'] || '')
-        .split(/[,;]+/)
-        .map(t => t.trim());
-
-      delete row['Tag: Topics'];
-
-      topicArray.forEach(topic => {
-        row['Tag: Topic ' + topic] = topics.includes(topic) ? topic : '';
-      });
+        .filter(Boolean);
 
       return row;
     });
 
-    // === Step 4: Ensure all dynamic topic columns have identical label
-    const topicHeaders = topicArray.map(() => 'Tag: Topic');
+    // === STEP 2: Extract all unique topics ===
+    const uniqueTopics = Array.from(new Set(
+      csvRows.flatMap(row => row._topics)
+    )).sort();
 
+    // === STEP 3: Insert 1 column per topic (same label) ===
+    csvRows.forEach(row => {
+      uniqueTopics.forEach(topic => {
+        row['Tag: Topic'] ??= [];
+        row['Tag: Topic'].push(row._topics.includes(topic) ? topic : '');
+      });
+      delete row._topics;
+    });
+
+    // === STEP 4: Stream CSV with repeated "Tag: Topic" headers ===
     const staticHeaders = [
       'Question ID', 'Title', 'Question Text', 'Correct Answer', 'Question Type',
       "Tag: Bloom's", 'Tag: Level', 'Tag: NCLEX', 'Tag: Course #', 'Correct Feedback',
       'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F'
     ];
 
+    const topicHeaders = uniqueTopics.map(() => 'Tag: Topic');
     const allHeaders = [...staticHeaders, ...topicHeaders];
 
-    // === Step 5: Stream CSV
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
 
@@ -111,16 +102,33 @@ app.post('/tools/es2aa/uploads', upload.fields([
     csvStream.pipe(res);
 
     csvRows.forEach(row => {
-      const reordered = {};
+      const flattened = { ...row };
+      const topicValues = flattened['Tag: Topic'] || [];
 
-      // flatten back to consistent label structure
-      staticHeaders.forEach(key => reordered[key] = row[key] || '');
-      topicArray.forEach(topic => reordered['Tag: Topic'] = row['Tag: Topic ' + topic] || '');
+      // Remove the array-based column
+      delete flattened['Tag: Topic'];
+
+      // Add each column value explicitly
+      topicValues.forEach((value, i) => {
+        flattened[`Tag: Topic ${i}`] = value;
+      });
+
+      // Rename keys back to 'Tag: Topic' for identical column labels
+      const reordered = {};
+      allHeaders.forEach(h => {
+        if (h === 'Tag: Topic') {
+          const topicValue = topicValues.shift();
+          reordered[h] = topicValue || '';
+        } else {
+          reordered[h] = flattened[h] || '';
+        }
+      });
 
       csvStream.write(reordered);
     });
 
     csvStream.end();
+
     fs.unlinkSync(pdfPath);
     if (xlsxPath) fs.unlinkSync(xlsxPath);
   } catch (err) {
