@@ -29,33 +29,31 @@ app.post('/tools/es2aa/uploads', upload.fields([
     }
 
     const csvRows = questions.map(q => {
-      const meta = metadataMap[q.id] || {};
-      const correctIndex = q.choices.findIndex(c => c === q.correctAnswer);
-      const correctLetter = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
+  const meta = metadataMap[q.id] || {};
+  const level = meta.level || '';
+  const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
+  
+  const row = {
+    'Question ID': q.id ? prefix + q.id : '',
+    Title: q.id || '',
+    'Question Text': q.question || '',
+    'Correct Answer': q.correctAnswer || '',
+    'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
+    'Tag: Topics': meta.topics || '',
+    "Tag: Bloom's": meta.bloom || '',
+    'Tag: Level': level,
+    'Tag: NCLEX': meta.nclex || '',
+    'Tag: Course #': meta.course || '',
+    'Correct Feedback': meta.feedback || ''
+  };
 
-      const row = {
-     'Question ID': q.id
-    ? (meta.level === 'Undergraduate' ? 'U' : meta.level === 'Graduate' ? 'G' : '') + q.id
-    : '',
-        Title: q.id || '',
-   'Question Text': q.question || '',
-  'Correct Answer': q.correctAnswer || '',
-  'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
-  'Tag: Topics': meta.topics || '',
-  "Tag: Bloom's": meta.bloom || '',
-  'Tag: Level': meta.level || '',
-  'Tag: NCLEX': meta.nclex || '',
-  'Tag: Course #': meta.course || '',
-  'Correct Feedback': meta.feedback || ''
-};
+  const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+  labels.forEach((label, i) => {
+    row[`Option ${label}`] = q.choices?.[i] || '';
+  });
 
-const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-labels.forEach((label, i) => {
-  row[`Option ${label}`] = q.choices?.[i] || '';
+  return row;
 });
-
-      return row;
-    });
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
