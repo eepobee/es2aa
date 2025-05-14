@@ -67,8 +67,8 @@ async function parseQuestionsFromPDF(buffer) {
     const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    const catSectionMatch = cleanedBlock.match(
-  /Item Categories:\s*\n([\s\S]*?)(?=\n(?:Item Creator:|Item Psychometrics:|Question #:|$))/i
+   const catSectionMatch = cleanedBlock.match(
+  /Item Categories:\s*([\s\S]*?)(?=\n(?:Item Creator:|Item Psychometrics:|Question #:|$))/i
 );
 
 const catLines = catSectionMatch
