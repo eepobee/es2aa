@@ -67,20 +67,23 @@ async function parseQuestionsFromPDF(buffer) {
     const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    const catSectionMatch = cleanedBlock.match(/Item Categories:\s*\n([\s\S]*?)(?=\n(?:Item Creator:|Item Psychometrics:|Question #:|$))/i);
+    const catSectionMatch = cleanedBlock.match(/Category Name[\s\S]*?\n([\s\S]*?)\nItem Creator:/);
     const catLines = catSectionMatch ? catSectionMatch[1].split('\n').map(l => l.trim()) : [];
 
     const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
     const bloom = bloomLine || '';
 
     const topics = catLines
-      .filter(line =>
-        line &&
-        !/Import(ed|s)/i.test(line) &&
-        !/^\d{2}\s*-/.test(line) &&
-        !/Topical Categories by Course/i.test(line)
-      )
-      .join('; ');
+  .filter(line =>
+    line &&
+    /^[A-Za-z]/.test(line) && // avoid rows starting with numbers or punctuation
+    !/Import(ed|s)/i.test(line) &&
+    !/^\d{2}\s*-/.test(line) &&
+    !/Topical Categories by Course/i.test(line) &&
+    !/Difficulty Level|Upper 27%|Discrimination Index|Point Biserial/i.test(line) &&
+    !/Item ID|Item Description|Item Weight/i.test(line)
+  )
+  .join('; ');
 
     questions.push({
       id,
