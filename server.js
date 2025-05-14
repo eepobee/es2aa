@@ -35,8 +35,12 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
       const row = {
   Title: q.id || '',
+  'Question ID': q.id
+    ? (meta.level === 'Undergraduate' ? 'U' : meta.level === 'Graduate' ? 'G' : '') + q.id
+    : '',
+
   'Question Text': q.question || '',
-  'Correct Answer': q.correctAnswer || '',  // <--- Use directly here
+  'Correct Answer': q.correctAnswer || '',
   'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
   'Tag: Topics': meta.topics || '',
   "Tag: Bloom's": meta.bloom || '',
@@ -46,10 +50,10 @@ app.post('/tools/es2aa/uploads', upload.fields([
   'Correct Feedback': meta.feedback || ''
 };
 
-      const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-      labels.forEach((label, i) => {
-        row[`Option ${label}`] = q.choices?.[i] || '';
-      });
+const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+labels.forEach((label, i) => {
+  row[`Option ${label}`] = q.choices?.[i] || '';
+});
 
       return row;
     });
