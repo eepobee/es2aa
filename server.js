@@ -65,30 +65,43 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return row;
     });
   
-   // === Identify all unique topics from all rows ===
-const allTopics = new Set();
+// === Identify all unique topics across all rows ===
+const uniqueTopics = new Set();
+
 csvRows.forEach(row => {
   (row['Tag: Topics'] || '')
     .split(/[,;]+/)
     .map(t => t.trim())
     .filter(Boolean)
-    .forEach(topic => allTopics.add(topic));
+    .forEach(topic => uniqueTopics.add(topic));
 });
-const sortedTopics = Array.from(allTopics).sort();
 
-// === Create columns: one for each unique topic with header "Tag: Topic" ===
+const sortedTopics = Array.from(uniqueTopics).sort();
+
+// === Expand each topic into a dedicated column labeled "Tag: Topic"
 csvRows = csvRows.map(row => {
   const rowTopics = (row['Tag: Topics'] || '')
     .split(/[,;]+/)
     .map(t => t.trim());
 
-  // Delete the original combined field
   delete row['Tag: Topics'];
 
-  // Add each topic as its own "Tag: Topic" column
+  sortedTopics.forEach(topic => {
+    row['Tag: Topic'] = row['Tag: Topic'] || {}; // init placeholder
+    row['Tag: Topic'][topic] = rowTopics.includes(topic) ? topic : '';
+  });
+
+  return row;
+});
+
+// === Flatten topic objects into consistent columns
+csvRows = csvRows.map(row => {
+  const topicData = row['Tag: Topic'];
+  delete row['Tag: Topic'];
+
   sortedTopics.forEach((topic, i) => {
-    const colLabel = 'Tag: Topic';
-    row[`${colLabel}${i > 0 ? ` ${i + 1}` : ''}`] = rowTopics.includes(topic) ? topic : '';
+    const columnLabel = 'Tag: Topic';
+    row[columnLabel + (i > 0 ? ` ${i + 1}` : '')] = topicData?.[topic] || '';
   });
 
   return row;
