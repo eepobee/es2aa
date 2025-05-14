@@ -71,6 +71,12 @@ async function parseQuestionsFromPDF(buffer) {
   /Item Categories:\s*([\s\S]*?)(?=\n(?:Item Creator:|Item Psychometrics:|Question #:|$))/i
 );
 
+if (i < 5) {
+  console.log(`\n=== RAW CATEGORY BLOCK ${i + 1} ===`);
+  const fullCatMatch = cleanedBlock.match(/Item Categories:[\s\S]*?(?=\n(?:Item Creator:|Item Psychometrics:|Question #:|$))/i);
+  console.log(fullCatMatch ? fullCatMatch[0] : '[NO MATCH]');
+}
+
 const catLines = catSectionMatch
   ? catSectionMatch[1]
       .split('\n')
