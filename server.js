@@ -76,15 +76,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       csvRows.flatMap(row => row._topics)
     )).sort();
 
-    // === STEP 3: Insert 1 column per topic (same label) ===
-    csvRows.forEach(row => {
-      uniqueTopics.forEach(topic => {
-        row['Tag: Topic'] ??= [];
-        row['Tag: Topic'].push(row._topics.includes(topic) ? topic : '');
-      });
-      delete row._topics;
-    });
-
+      
     // === STEP 4: Stream CSV with repeated "Tag: Topic" headers ===
     const staticHeaders = [
       'Question ID', 'Title', 'Question Text', 'Correct Answer', 'Question Type',
