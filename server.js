@@ -69,24 +69,28 @@ app.post('/tools/es2aa/uploads', upload.fields([
     });
 
     // === Expand unique Tag: Topics into separate columns ===
-    const uniqueTopics = new Set();
+    // === Expand unique Tag: Topics into individual "Tag: Topic" columns ===
+const uniqueTopics = new Set();
 
-    csvRows.forEach(row => {
-      (row['Tag: Topics'] || '').split(/[,;]+/).map(t => t.trim()).filter(Boolean).forEach(topic => {
-        uniqueTopics.add(topic);
-      });
-    });
+csvRows.forEach(row => {
+  (row['Tag: Topics'] || '')
+    .split(/[,;]+/)
+    .map(t => t.trim())
+    .filter(Boolean)
+    .forEach(topic => uniqueTopics.add(topic));
+});
 
-    const topicList = Array.from(uniqueTopics).sort();
+const topicList = Array.from(uniqueTopics).sort();
 
-    csvRows.forEach(row => {
-      const rowTopics = (row['Tag: Topics'] || '').split(/[,;]+/).map(t => t.trim());
-      topicList.forEach(topic => {
-        row['Tag: Topic'] ??= {}; // ensure no accidental reuse of label
-        row[`Tag: Topic ${topic}`] = rowTopics.includes(topic) ? 'X' : '';
-      });
-      delete row['Tag: Topics'];
-    });
+csvRows = csvRows.map(row => {
+  const topics = row['Tag: Topic'] || [];
+  delete row['Tag: Topic'];
+  topics.forEach(topic => {
+    row['Tag: Topic'] = row['Tag: Topic'] || [];
+    row['Tag: Topic'].push(topic);
+  });
+  return row;
+});
 
     // === Send CSV ===
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
