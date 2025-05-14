@@ -32,10 +32,10 @@ function parseXLSXMetadata(filePath) {
     const id = row['ID/Rev']?.toString().trim();
     const categories = row['Categories'] || '';
 
-    const bloomMatch = categories.match(/\b0[1-6]\s*-\s*\w+/);
+    const bloomMatch = categories.match(/\b0[1-6]\s*-?\s*\w+/);
     const courseMatch = categories.match(/\bNU\s*\d{3}\b/);
 
-    const bloom = bloomMatch ? bloomMatch[0].trim() : '';
+    const bloom = bloomMatch ? bloomMatch[0].replace(/\s*-\s*/, ' ').trim() : '';
     const course = courseMatch ? courseMatch[0].trim() : '';
     const level = course ? getLevel(course) : '';
 
