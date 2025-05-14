@@ -74,16 +74,13 @@ async function parseQuestionsFromPDF(buffer) {
     const bloom = bloomLine || '';
 
     const topics = catLines
-  .filter(line =>
-    line &&
-    /^[A-Za-z]/.test(line) && // avoid rows starting with numbers or punctuation
-    !/Import(ed|s)/i.test(line) &&
-    !/^\d{2}\s*-/.test(line) &&
-    !/Topical Categories by Course/i.test(line) &&
-    !/Difficulty Level|Upper 27%|Discrimination Index|Point Biserial/i.test(line) &&
-    !/Item ID|Item Description|Item Weight/i.test(line)
-  )
-  .join('; ');
+      .filter(line =>
+        line &&
+        !/Import(ed|s)/i.test(line) &&
+        !/^\d{2}\s*-/.test(line) &&
+        !/Topical Categories by Course/i.test(line)
+      )
+      .join('; ');
 
     questions.push({
       id,
