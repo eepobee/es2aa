@@ -34,17 +34,17 @@ app.post('/tools/es2aa/uploads', upload.fields([
       const correctLetter = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
 
       const row = {
-        Title: q.id || '',
-        'Question Text': q.question || '',
-        'Correct Answer': correctLetter,
-        'Question Type': meta.type || '',
-        'Tag: Topics': meta.topics || q.topics || '',
-        "Tag: Bloom's": meta.bloom || q.bloom || '',
-        'Tag: Level': meta.level || q.level || '',
-        'Tag: NCLEX': meta.nclex || q.nclex || '',
-        'Tag: Course #': meta.course || q.courseNumber || '',
-        'Correct Feedback': meta.feedback || q.rationale || ''
-      };
+  Title: q.id || '',
+  'Question Text': q.question || '',
+  'Correct Answer': q.correctAnswer || '',  // <--- Use directly here
+  'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
+  'Tag: Topics': meta.topics || '',
+  "Tag: Bloom's": meta.bloom || '',
+  'Tag: Level': meta.level || '',
+  'Tag: NCLEX': meta.nclex || '',
+  'Tag: Course #': meta.course || '',
+  'Correct Feedback': meta.feedback || ''
+};
 
       const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
       labels.forEach((label, i) => {
