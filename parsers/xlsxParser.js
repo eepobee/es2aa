@@ -9,17 +9,6 @@ function getLevel(course) {
   return '';
 }
 
-const xlsx = require('xlsx');
-
-function getLevel(course) {
-  const match = course.match(/\d{3}/);
-  if (!match) return '';
-  const num = parseInt(match[0]);
-  if (num >= 100 && num <= 399) return 'Undergraduate';
-  if (num >= 500 && num <= 899) return 'Graduate';
-  return '';
-}
-
 const NCLEX_DOMAINS = [
   'Basic Care and Comfort',
   'Fundamentals Review',
