@@ -8,7 +8,7 @@ const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-const parseXLSXMetadata = require('./parsers/xlsxParser'); // <- New module
+const parseXLSXMetadata = require('./parsers/xlsxParser');
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
@@ -25,49 +25,70 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
     let metadataMap = {};
     if (xlsxPath) {
-  metadataMap = await parseXLSXMetadata(xlsxPath);
-}
+      metadataMap = await parseXLSXMetadata(xlsxPath);
+    }
 
-// Get fallback course/level from first match
-let fallbackCourse = '';
-let fallbackLevel = '';
-for (const meta of Object.values(metadataMap)) {
-  if (meta.course && meta.level) {
-    fallbackCourse = meta.course;
-    fallbackLevel = meta.level;
-    break;
-  }
-}
+    // Fallback course/level
+    let fallbackCourse = '';
+    let fallbackLevel = '';
+    for (const meta of Object.values(metadataMap)) {
+      if (meta.course && meta.level) {
+        fallbackCourse = meta.course;
+        fallbackLevel = meta.level;
+        break;
+      }
+    }
 
-const csvRows = questions.map(q => {
-  const meta = metadataMap[q.id] || {};
+    // === Build rows ===
+    let csvRows = questions.map(q => {
+      const meta = metadataMap[q.id] || {};
+      const level = meta.level || fallbackLevel;
+      const course = meta.course || fallbackCourse;
+      const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
 
-  const level = meta.level || fallbackLevel;
-  const course = meta.course || fallbackCourse;
-  const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
+      const row = {
+        'Question ID': q.id ? prefix + q.id : '',
+        Title: q.id || '',
+        'Question Text': q.question || '',
+        'Correct Answer': q.correctAnswer || '',
+        'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
+        'Tag: Topics': meta.topics || '',
+        "Tag: Bloom's": meta.bloom || '',
+        'Tag: Level': level,
+        'Tag: NCLEX': meta.nclex || '',
+        'Tag: Course #': course,
+        'Correct Feedback': meta.feedback || ''
+      };
 
-  const row = {
-    'Question ID': q.id ? prefix + q.id : '',
-    Title: q.id || '',
-    'Question Text': q.question || '',
-    'Correct Answer': q.correctAnswer || '',
-    'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
-    'Tag: Topics': meta.topics || '',
-    "Tag: Bloom's": meta.bloom || '',
-    'Tag: Level': level,
-    'Tag: NCLEX': meta.nclex || '',
-    'Tag: Course #': course,
-    'Correct Feedback': meta.feedback || ''
-  };
+      const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+      labels.forEach((label, i) => {
+        row[`Option ${label}`] = q.choices?.[i] || '';
+      });
 
-  const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-  labels.forEach((label, i) => {
-    row[`Option ${label}`] = q.choices?.[i] || '';
-  });
+      return row;
+    });
 
-  return row;
-});
+    // === Expand unique Tag: Topics into separate columns ===
+    const uniqueTopics = new Set();
 
+    csvRows.forEach(row => {
+      (row['Tag: Topics'] || '').split(/[,;]+/).map(t => t.trim()).filter(Boolean).forEach(topic => {
+        uniqueTopics.add(topic);
+      });
+    });
+
+    const topicList = Array.from(uniqueTopics).sort();
+
+    csvRows.forEach(row => {
+      const rowTopics = (row['Tag: Topics'] || '').split(/[,;]+/).map(t => t.trim());
+      topicList.forEach(topic => {
+        row['Tag: Topic'] ??= {}; // ensure no accidental reuse of label
+        row[`Tag: Topic ${topic}`] = rowTopics.includes(topic) ? 'X' : '';
+      });
+      delete row['Tag: Topics'];
+    });
+
+    // === Send CSV ===
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
     const csvStream = csvWriter.format({ headers: true });
