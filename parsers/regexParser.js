@@ -24,24 +24,28 @@ async function parseQuestionsFromPDF(buffer) {
     const question = questionMatch ? questionMatch[1].trim() : '';
 
     // === Extract answer options ===
-    const choiceRegex = /(?:^|\n)\s*((?:\d+\s*)?[✓✔]?)\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d+\s*)?[✓✔]?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
+    // Handles: 3A., ✓A., or plain A.
+    const choiceRegex = /(?:^|\n)\s*((?:\d+|✓)?)([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d+|✓)?[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
 
     const choices = [];
     let match;
     let correctIndex = -1;
 
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-      const marker = match[1].replace(/\s+/g, '');
+      const marker = match[1].trim();
       const letter = match[2];
       const text = match[3].trim();
       const index = 'ABCDEF'.indexOf(letter);
 
       choices[index] = text;
 
-      const isCorrect = /✓|✔/.test(marker);
-      if (isCorrect) correctIndex = index;
+      if (marker) {
+        // If marker contains ✓ or a number, treat as correct
+        if (/✓|\d+/.test(marker)) {
+          correctIndex = index;
+        }
+      }
     }
-
     // === Return correct answer as letter only ===
     const correctAnswer = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
 
