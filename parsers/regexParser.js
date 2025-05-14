@@ -41,11 +41,16 @@ async function parseQuestionsFromPDF(buffer) {
 
     const correctAnswer = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
 
-    questions.push({
-      question,
-      choices,
-      correctAnswer
-    });
+   const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
+const id = idMatch ? idMatch[1].trim() : '';
+
+questions.push({
+  id,
+  question,
+  choices,
+  correctAnswer
+});
+
   }
 
   return questions;
