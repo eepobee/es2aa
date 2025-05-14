@@ -21,13 +21,11 @@ async function parseQuestionsFromPDF(buffer) {
   for (let i = 0; i < rawBlocks.length; i++) {
     let block = rawBlocks[i];
 
-    // === DEBUG: Show first 5 blocks before cleanup ===
     if (i < 5) {
       console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
       console.log(block);
     }
 
-    // Remove everything between "Item Psychometrics:" and the next "Question #:"
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
     const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
@@ -46,18 +44,16 @@ async function parseQuestionsFromPDF(buffer) {
     let correctIndex = -1;
 
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-      const isCorrect = !!match[1]; // "3B." style — if there's a number, it's the correct one
+      const isCorrect = !!match[1];
       const letter = match[2];
       const text = match[3].trim();
       const index = 'ABCDEF'.indexOf(letter);
-
       choices[index] = text;
       if (isCorrect) correctIndex = index;
     }
 
     const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
 
-    // === DEBUG ===
     if (i < 5) {
       console.log(`Choices:`, choices);
       console.log(`Correct Index:`, correctIndex);
@@ -67,24 +63,14 @@ async function parseQuestionsFromPDF(buffer) {
     const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|$)/is);
     const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
 
-    // === Category Extraction ===
-    const catSectionMatch = cleanedBlock.match(
-      /Item Categories:\s*([\s\S]*?)(?=Item Creator:|Item Psychometrics:|Question #:|$)/i
-    );
-
-    if (i < 5) {
-      console.log(`\n=== RAW CATEGORY BLOCK ${i + 1} ===`);
-      const fullCatMatch = cleanedBlock.match(/Item Categories:[\s\S]*?(?=Item Creator:|Item Psychometrics:|Question #:|$)/i);
-      console.log(fullCatMatch ? fullCatMatch[0] : '[NO MATCH]');
-    }
-
-    const catLines = catSectionMatch
-      ? catSectionMatch[1]
+    // === Extract category content from trailing lines ===
+    const categoryTailMatch = cleanedBlock.match(/Category NameCategory Path([\s\S]*?)\n{2,}|Item Creator:/i);
+    const catLines = categoryTailMatch
+      ? categoryTailMatch[1]
           .split('\n')
-          .map(l => l.trim())
+          .map(line => line.trim())
           .filter(line =>
             line &&
-            line.includes('|') &&
             !/Category Name.*Category Path/i.test(line)
           )
       : [];
@@ -93,7 +79,7 @@ async function parseQuestionsFromPDF(buffer) {
     const bloom = bloomLine || '';
 
     const topics = catLines
-      .flatMap(line => line.split('|').map(cell => cell.trim()))
+      .flatMap(line => line.split(/\\|;/).map(cell => cell.trim()))
       .filter(cell =>
         cell &&
         !/Topical Categories by Course/i.test(cell) &&
