@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -28,7 +27,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
       metadataMap = await parseXLSXMetadata(xlsxPath);
     }
 
-    // Fallback course/level
     let fallbackCourse = '';
     let fallbackLevel = '';
     for (const meta of Object.values(metadataMap)) {
@@ -39,7 +37,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     }
 
-    // === Build rows ===
+    // Build core rows
     let csvRows = questions.map(q => {
       const meta = metadataMap[q.id] || {};
       const level = meta.level || fallbackLevel;
@@ -60,44 +58,58 @@ app.post('/tools/es2aa/uploads', upload.fields([
         'Correct Feedback': meta.feedback || ''
       };
 
-      const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-      labels.forEach((label, i) => {
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach((label, i) => {
         row[`Option ${label}`] = q.choices?.[i] || '';
       });
 
       return row;
     });
 
-    // === Expand unique Tag: Topics into separate columns ===
-    // === Expand unique Tag: Topics into individual "Tag: Topic" columns ===
-const uniqueTopics = new Set();
+    // Flatten 'Tag: Topics' into multiple 'Tag: Topic' columns
+    csvRows = csvRows.map(row => {
+      const topicValues = (row['Tag: Topics'] || '')
+        .split(/[,;]+/)
+        .map(t => t.trim())
+        .filter(Boolean);
 
-csvRows.forEach(row => {
-  (row['Tag: Topics'] || '')
-    .split(/[,;]+/)
-    .map(t => t.trim())
-    .filter(Boolean)
-    .forEach(topic => uniqueTopics.add(topic));
-});
+      delete row['Tag: Topics'];
 
-const topicList = Array.from(uniqueTopics).sort();
+      topicValues.forEach((topic, i) => {
+        row[`Tag: Topic ${i}`] = topic;
+      });
 
-csvRows = csvRows.map(row => {
-  const topics = row['Tag: Topic'] || [];
-  delete row['Tag: Topic'];
-  topics.forEach(topic => {
-    row['Tag: Topic'] = row['Tag: Topic'] || [];
-    row['Tag: Topic'].push(topic);
-  });
-  return row;
-});
+      return row;
+    });
 
-    // === Send CSV ===
+    // Generate headers manually to force identical column labels
+    const standardHeaders = [
+      'Question ID', 'Title', 'Question Text', 'Correct Answer', 'Question Type',
+      "Tag: Bloom's", 'Tag: Level', 'Tag: NCLEX', 'Tag: Course #', 'Correct Feedback',
+      'Option A', 'Option B', 'Option C', 'Option D', 'Option E', 'Option F'
+    ];
+
+    const maxTopicCols = Math.max(...csvRows.map(row =>
+      Object.keys(row).filter(k => k.startsWith('Tag: Topic')).length
+    ));
+
+    const topicHeaders = Array(maxTopicCols).fill('Tag: Topic');
+    const allHeaders = [...standardHeaders, ...topicHeaders];
+
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
-    const csvStream = csvWriter.format({ headers: true });
+
+    const csvStream = csvWriter.format({ headers: allHeaders });
     csvStream.pipe(res);
-    csvRows.forEach(row => csvStream.write(row));
+    csvRows.forEach(row => {
+      const flatRow = { ...row };
+
+      // Re-key 'Tag: Topic 0', 'Tag: Topic 1'... into multiple 'Tag: Topic'
+      for (let i = 0; i < maxTopicCols; i++) {
+        flatRow[`Tag: Topic ${i}`] = row[`Tag: Topic ${i}`] || '';
+      }
+
+      csvStream.write(flatRow);
+    });
     csvStream.end();
 
     fs.unlinkSync(pdfPath);
