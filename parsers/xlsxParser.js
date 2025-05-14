@@ -52,7 +52,7 @@ function parseXLSXMetadata(filePath) {
       .filter(c => c && !exclusions.includes(c)).join('; ');
 
     metadata[id] = {
-      type: row['Type'] || '',
+      type: row['Type']?.toString().trim().toLowerCase() === 'mchoice' ? 'Multiple Choice' : (row['Type'] || ''),
       bloom,
       course,
       level,
