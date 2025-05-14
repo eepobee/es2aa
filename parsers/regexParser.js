@@ -24,26 +24,26 @@ async function parseQuestionsFromPDF(buffer) {
     const question = questionMatch ? questionMatch[1].trim() : '';
 
     // === Extract choices and identify correct ones
-   const choices = [];
+ const choiceRegex = /(?:^|\n)\s*((?:\d|✓)?)([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d|✓)?[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
+
+const choices = [];
+let match;
 const correctLetters = [];
 
-const choiceRegex = /(?:^|\n)\s*(\d|✓)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d|✓)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
-
-let match;
 while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-  const marker = match[1]?.trim();
+  const marker = match[1]; // might be '3' or '✓' or ''
   const letter = match[2];
   const text = match[3].trim();
   const index = 'ABCDEF'.indexOf(letter);
 
   choices[index] = text;
 
-  if (marker === '3' || marker === '✓') {
-    correctLetters.push(letter);
-  }
+  const isCorrect = marker && (marker === '✓' || /^\d+$/.test(marker));
+  if (isCorrect) correctLetters.push(letter);
 }
 
 const correctAnswer = correctLetters.join(';');
+
 
     const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
     const id = idMatch ? idMatch[1].trim() : '';
