@@ -20,7 +20,7 @@ async function parseQuestionsFromPDF(buffer) {
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
     // === Extract question text up until first A. or ✓A.
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d?\s*[\u2713]?\s*[A-F]\.|$))/s);
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d?\s*[\u2713✓]?\s*[A-F]\.|$))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
     // === Extract answer options ===
@@ -42,6 +42,7 @@ async function parseQuestionsFromPDF(buffer) {
       if (isCorrect) correctIndex = index;
     }
 
+    // === Return correct answer as letter only ===
     const correctAnswer = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
 
     const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
@@ -53,7 +54,6 @@ async function parseQuestionsFromPDF(buffer) {
       choices,
       correctAnswer
     });
-
   }
 
   return questions;
