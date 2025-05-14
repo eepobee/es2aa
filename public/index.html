@@ -11,9 +11,12 @@
     <h1>ExamSoft → Atomic Assessments</h1>
     <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>    
     <form action="/tools/es2aa/uploads" method="post" enctype="multipart/form-data">
-      <input type="file" name="pdf" accept="application/pdf" required>
-      <button type="submit">Upload and Convert</button>
-    </form>
+  <label>Upload ExamSoft PDF:</label>
+  <input type="file" name="pdf" accept="application/pdf" required><br><br>
+  <label>Upload Excel metadata (optional):</label>
+  <input type="file" name="xlsx" accept=".xlsx"><br><br>
+  <button type="submit">Upload and Convert</button>
+</form>
     
     <footer>
       <p>&copy; Jefferson College of Nursing</p>

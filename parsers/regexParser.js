@@ -2,15 +2,6 @@
 
 const pdfParse = require('pdf-parse');
 
-function getLevelFromCourse(course) {
-  const match = course.match(/NU\s*(\d{3})/);
-  if (!match) return '';
-  const num = parseInt(match[1], 10);
-  if (num >= 100 && num <= 399) return 'Undergraduate';
-  if (num >= 500 && num <= 899) return 'Graduate';
-  return '';
-}
-
 async function parseQuestionsFromPDF(buffer) {
   const data = await pdfParse(buffer);
   const text = data.text;
@@ -18,31 +9,18 @@ async function parseQuestionsFromPDF(buffer) {
 
   const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
 
-for (let i = 0; i < rawBlocks.length; i++) {
-  const block = rawBlocks[i];
-  const nextBlock = rawBlocks[i + 1] || ''; // lookahead for category metadata
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const block = rawBlocks[i];
 
-  if (i < 12) {
-    console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
-    console.log(block);
+    if (i < 12) {
+      console.log(`\n===== RAW BLOCK ${i + 1} =====\n`);
+      console.log(block);
+    }
 
-    console.log(`\n===== RAW CATEGORY BLOCK ${i + 1} (from next block) =====\n`);
-    const catMatch = nextBlock.match(/Category NameCategory Path([\s\S]*?)(?:\n{2,}|Item Creator:)/i);
-    console.log(catMatch ? catMatch[1] : '[NO CATEGORY DATA FOUND]');
-  }
-
-    // Strip trailing metadata that bleeds into choices
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
-    const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
-    const id = idMatch ? idMatch[1] : '';
-
-    const courseMatch = cleanedBlock.match(/NU\s*\d{3}/);
-    const courseNumber = courseMatch ? courseMatch[0] : '';
-    const level = getLevelFromCourse(courseNumber);
-
     // === Extract question text up until first A. or ✓A.
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d?\s*[✓]?\s*[A-F]\.))/s);
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d?\s*[\u2713]?\s*[A-F]\.|$))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
 
     // === Extract answer options ===
@@ -52,7 +30,7 @@ for (let i = 0; i < rawBlocks.length; i++) {
     let correctIndex = -1;
 
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-      const isCorrect = !!match[1]; // Has a number prefix like 3D.
+      const isCorrect = !!match[1];
       const letter = match[2];
       const text = match[3].trim();
       const index = 'ABCDEF'.indexOf(letter);
@@ -61,56 +39,12 @@ for (let i = 0; i < rawBlocks.length; i++) {
       if (isCorrect) correctIndex = index;
     }
 
-    const correctAnswer = correctIndex !== -1 && correctIndex < choices.length ? choices[correctIndex] : '';
-
-    // === Extract rationale cleanly ===
-    const rationaleMatch = cleanedBlock.match(/Rationale:\s*(.+?)(?=\n{2,}|Item ID:|Item Categories:|$)/is);
-    const rationale = rationaleMatch ? rationaleMatch[1].trim() : '';
-
-    // === Extract category lines from anywhere ===
-    const categoryTailMatch = cleanedBlock.match(/Category NameCategory Path([\s\S]*?)\n{2,}|Item Creator:/i);
-    let catLines = [];
-
-    if (categoryTailMatch && categoryTailMatch[1]) {
-      catLines = categoryTailMatch[1]
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line =>
-          line &&
-          !/Category Name.*Category Path/i.test(line)
-        );
-    }
-
-    const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
-    const bloom = bloomLine || '';
-
-    const topics = catLines
-      .flatMap(line => line.split(/\\|;/).map(cell => cell.trim()))
-      .filter(cell =>
-        cell &&
-        !/Topical Categories by Course/i.test(cell) &&
-        !/Import(ed|s)/i.test(cell) &&
-        !/^\d{2}\s*-/.test(cell) &&
-        !/NU\s*\d{3}/.test(cell) &&
-        !/Bloom.?s?/i.test(cell) &&
-        !/NCLEX/i.test(cell)
-      )
-      .join('; ');
-
-    const nclexLine = catLines.find(line => /NCLEX( test plan)?\\/.test(line));
-    const nclex = nclexLine ? nclexLine.split('\\')[1]?.trim() || '' : '';
+    const correctAnswer = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
 
     questions.push({
-      id,
       question,
       choices,
-      correctAnswer,
-      rationale,
-      bloom,
-      topics,
-      nclex,
-      courseNumber,
-      level
+      correctAnswer
     });
   }
 

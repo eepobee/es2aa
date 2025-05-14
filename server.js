@@ -8,52 +8,64 @@ const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
+const parseXLSXMetadata = require('./parsers/xlsxParser'); // <- New module
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
-app.post('/tools/es2aa/uploads', upload.single('pdf'), async (req, res) => {
+app.post('/tools/es2aa/uploads', upload.fields([
+  { name: 'pdf', maxCount: 1 },
+  { name: 'xlsx', maxCount: 1 }
+]), async (req, res) => {
   try {
-    console.log('Received file:', req.file); // Debug: log uploaded file
+    const pdfPath = req.files?.pdf?.[0]?.path;
+    const xlsxPath = req.files?.xlsx?.[0]?.path;
 
-    const pdfBuffer = fs.readFileSync(req.file.path);
+    const pdfBuffer = fs.readFileSync(pdfPath);
     const questions = await parseQuestionsFromPDF(pdfBuffer);
 
-    console.log('Parsed questions:', questions); // Debug: log parsed output
+    let metadataMap = {};
+    if (xlsxPath) {
+      metadataMap = await parseXLSXMetadata(xlsxPath); // returns object by ID
+    }
 
     const csvRows = questions.map(q => {
+      const meta = metadataMap[q.id] || {};
+      const correctIndex = q.choices.findIndex(c => c === q.correctAnswer);
+      const correctLetter = correctIndex !== -1 ? 'ABCDEF'[correctIndex] : '';
+
       const row = {
         Title: q.id || '',
         'Question Text': q.question || '',
-        'Correct Answer': q.correctAnswer || '',
-        'Tag: Topics': q.topics || '',
-        "Tag: Bloom's": q.bloom || '',
-        'Tag: Level': q.level || '',
-        'Tag: NCLEX': q.nclex || '',
-        'Tag: Course #': q.courseNumber || '',
-        'Correct Feedback': q.rationale || ''
+        'Correct Answer': correctLetter,
+        'Question Type': meta.type || '',
+        'Tag: Topics': meta.topics || q.topics || '',
+        "Tag: Bloom's": meta.bloom || q.bloom || '',
+        'Tag: Level': meta.level || q.level || '',
+        'Tag: NCLEX': meta.nclex || q.nclex || '',
+        'Tag: Course #': meta.course || q.courseNumber || '',
+        'Correct Feedback': meta.feedback || q.rationale || ''
       };
-    
-      // Add dynamic choices (A–F)
-      const choiceLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
-      choiceLabels.forEach((label, index) => {
-        row[`Option ${label}`] = q.choices?.[index] || '';
+
+      const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+      labels.forEach((label, i) => {
+        row[`Option ${label}`] = q.choices?.[i] || '';
       });
-    
+
       return row;
-    }); 
+    });
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
-
     const csvStream = csvWriter.format({ headers: true });
     csvStream.pipe(res);
     csvRows.forEach(row => csvStream.write(row));
     csvStream.end();
 
-    fs.unlinkSync(req.file.path);
+    fs.unlinkSync(pdfPath);
+    if (xlsxPath) fs.unlinkSync(xlsxPath);
   } catch (err) {
-    console.error('Error processing PDF upload:', err);
-    res.status(500).send('Failed to process PDF.');
+    console.error('Error processing upload:', err);
+    res.status(500).send('Failed to process input.');
   }
 });
 
