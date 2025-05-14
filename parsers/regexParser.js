@@ -65,15 +65,17 @@ async function parseQuestionsFromPDF(buffer) {
 
     // === Extract category content from trailing lines ===
     const categoryTailMatch = cleanedBlock.match(/Category NameCategory Path([\s\S]*?)\n{2,}|Item Creator:/i);
-    const catLines = categoryTailMatch
-      ? categoryTailMatch[1]
-          .split('\n')
-          .map(line => line.trim())
-          .filter(line =>
-            line &&
-            !/Category Name.*Category Path/i.test(line)
-          )
-      : [];
+    let catLines = [];
+
+if (categoryTailMatch && categoryTailMatch[1]) {
+  catLines = categoryTailMatch[1]
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line =>
+      line &&
+      !/Category Name.*Category Path/i.test(line)
+    );
+}
 
     const bloomLine = catLines.find(line => /^\d{2}\s*-/.test(line));
     const bloom = bloomLine || '';
