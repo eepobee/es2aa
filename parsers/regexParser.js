@@ -26,22 +26,22 @@ async function parseQuestionsFromPDF(buffer) {
     // === Extract choices and identify correct ones
     const choiceRegex = /(?:^|\n)\s*(\d)?([A-F])\.\s*(.*?)(?=(?:\n\s*\d?[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
 
-    const choices = [];
-    const correctLetters = [];
+const choices = [];
+const correctLetters = [];
 
-    let match;
-    while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
-      const marker = match[1];         // "3" if correct
-      const letter = match[2];         // A–F
-      const text = match[3].trim();    // option text
-      const index = 'ABCDEF'.indexOf(letter);
+let match;
+while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
+  const marker = match[1];         // e.g., "3"
+  const letter = match[2];         // e.g., "A"
+  const text = match[3].trim();
+  const index = 'ABCDEF'.indexOf(letter);
 
-      choices[index] = text;
+  choices[index] = text;
 
-      if (marker === '3') {
-        correctLetters.push(letter);
-      }
-    }
+  if (marker === '3') {
+    correctLetters.push(letter);   // capture correct letter
+  }
+}
 
     const correctAnswer = correctLetters.join(';');
 
