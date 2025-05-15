@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -6,10 +5,9 @@ const fs = require('fs');
 const path = require('path');
 const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
-const parseXLSXMetadata = require('./parsers/xlsxParser');
-
 const app = express();
 const upload = multer({ dest: 'uploads/' });
+const parseXLSXMetadata = require('./parsers/xlsxParser');
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
@@ -29,7 +27,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       metadataMap = await parseXLSXMetadata(xlsxPath);
     }
 
-    // Fallback course/level
+    // Get fallback course/level from first match
     let fallbackCourse = '';
     let fallbackLevel = '';
     for (const meta of Object.values(metadataMap)) {
@@ -41,6 +39,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
     }
 
     const MAX_TOPICS = 5;
+
     const rawRows = questions
       .filter(q => {
         const meta = metadataMap[q.id];
@@ -48,6 +47,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       })
       .map(q => {
         const meta = metadataMap[q.id];
+
         const level = meta.level || fallbackLevel;
         const course = meta.course || fallbackCourse;
         const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
@@ -65,9 +65,11 @@ app.post('/tools/es2aa/uploads', upload.fields([
           'Correct Feedback': meta.feedback || ''
         };
 
-        // Split and assign topic tags
+        console.log(`Q${q.id}: meta.topics =`, meta.topics);
+
+        // Break topics into multiple columns (comma or semicolon separated)
         const topicList = (meta.topics || '')
-          .split(/\s*[,;]\s*/)
+         .split(/\s*[,;]\s*/)
           .map(t => t.trim())
           .filter(Boolean);
 
@@ -75,8 +77,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
           row[`Tag: Topic ${i + 1}`] = topicList[i] || '';
         }
 
-        // Option labels A–K
-        const labels = ['A','B','C','D','E','F','G','H','I','J','K'];
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
         labels.forEach((label, i) => {
           row[`Option ${label}`] = q.choices?.[i] || '';
         });
@@ -84,7 +85,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
         return row;
       });
 
-    // Find which topic columns are actually used
+    // Identify only used topic columns
     const usedTopicCols = new Set();
     rawRows.forEach(row => {
       for (let i = 1; i <= MAX_TOPICS; i++) {
@@ -93,51 +94,46 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     });
 
-    // Strip unused topic columns
-    const cleanedRows = rawRows.map(row => {
-      const cleaned = {};
+    const csvRows = rawRows.map(row => {
+      const newRow = {};
       for (const key in row) {
         if (!key.startsWith('Tag: Topic') || usedTopicCols.has(key)) {
-          cleaned[key] = row[key];
+          newRow[key] = row[key];
         }
       }
-      return cleaned;
-    });
-
-    // Build output rows with uniform "Tag: Topic" headers
-    const finalHeaders = new Set();
-    const finalRows = cleanedRows.map(row => {
-      const newRow = {};
-      let topicIndex = 1;
-
-      for (const [key, value] of Object.entries(row)) {
-        if (key.startsWith('Tag: Topic')) {
-          const headerKey = `Tag: Topic__${topicIndex++}`;
-          newRow[headerKey] = value;
-          finalHeaders.add(headerKey);
-        } else {
-          newRow[key] = value;
-          finalHeaders.add(key);
-        }
-      }
-
       return newRow;
     });
 
-    // Replace headers: all Tag: Topic__N → Tag: Topic
-    const headers = Array.from(finalHeaders).map(h =>
-      h.startsWith('Tag: Topic__') ? 'Tag: Topic' : h
-    );
-
+    // Create headers, renaming all used topic columns to "Tag: Topic"
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
-    res.setHeader('Content-Type', 'text/csv');
+res.setHeader('Content-Type', 'text/csv');
 
-    const csvStream = csvWriter.format({ headers });
-    csvStream.pipe(res);
-    finalRows.forEach(row => csvStream.write(row));
-    csvStream.end();
+const csvStream = csvWriter.format({ headers: true });
+csvStream.pipe(res);
 
-    // Cleanup temp files
+// Write rows with dynamic header renaming
+csvRows.forEach(originalRow => {
+  const row = {};
+
+  for (const [key, value] of Object.entries(originalRow)) {
+    // Rename all "Tag: Topic #" keys to just "Tag: Topic"
+    const newKey = key.startsWith('Tag: Topic') ? 'Tag: Topic' : key;
+
+    // If the key already exists (i.e. duplicate), make a new one
+    if (newKey === 'Tag: Topic' && newKey in row) {
+      let i = 2;
+      while (`Tag: Topic_${i}` in row) i++;
+      row[`Tag: Topic_${i}`] = value;
+    } else {
+      row[newKey] = value;
+    }
+  }
+
+  csvStream.write(row);
+});
+
+csvStream.end();
+
     fs.unlinkSync(pdfPath);
     if (xlsxPath) fs.unlinkSync(xlsxPath);
   } catch (err) {
