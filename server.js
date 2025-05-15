@@ -108,39 +108,40 @@ app.post('/tools/es2aa/uploads', upload.fields([
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
     const csvStream = csvWriter.format({ headers: true });
-    csvStream.pipe(res);
+csvStream.pipe(res);
 
-    // Write rows with all topic columns labeled "Tag: Topic"
-    csvRows.forEach(originalRow => {
-      const row = {};
-      let topicIndex = 1;
+// Build unique headers dynamically (so "Tag: Topic", "Tag: Topic", ...)
+let finalHeadersSet = new Set();
 
-      for (const [key, value] of Object.entries(originalRow)) {
-        if (key.startsWith('Tag: Topic')) {
-          row[`Tag: Topic`] ??= value;
-          if (topicIndex > 1) row[`Tag: Topic`] = value;
-          topicIndex++;
-        } else {
-          row[key] = value;
-        }
-      }
+const csvOutputRows = csvRows.map(originalRow => {
+  const newRow = {};
+  let topicIndex = 1;
 
-      // Duplicate-tag workaround: rename all "Tag: Topic" fields as needed
-      const finalRow = {};
-      let topicCounter = 0;
-      for (const [key, value] of Object.entries(row)) {
-        if (key === 'Tag: Topic') {
-          topicCounter++;
-          finalRow[`Tag: Topic`] = value;
-        } else {
-          finalRow[key] = value;
-        }
-      }
+  for (const [key, value] of Object.entries(originalRow)) {
+    if (key.startsWith('Tag: Topic')) {
+      const label = `Tag: Topic`; // All will show same column name
+      const headerKey = `${label}__${topicIndex++}`; // Hidden unique keys
+      newRow[headerKey] = value;
+      finalHeadersSet.add(headerKey);
+    } else {
+      newRow[key] = value;
+      finalHeadersSet.add(key);
+    }
+  }
 
-      csvStream.write(finalRow);
-    });
+  return newRow;
+});
 
-    csvStream.end();
+// Final headers: rename all Tag: Topic hidden keys back to visible
+const headers = Array.from(finalHeadersSet).map(key =>
+  key.startsWith('Tag: Topic__') ? 'Tag: Topic' : key
+);
+
+// Stream CSV
+const csvStreamFinal = csvWriter.format({ headers });
+csvStreamFinal.pipe(res);
+csvOutputRows.forEach(row => csvStreamFinal.write(row));
+csvStreamFinal.end();
 
     fs.unlinkSync(pdfPath);
     if (xlsxPath) fs.unlinkSync(xlsxPath);
