@@ -69,12 +69,9 @@ app.post('/tools/es2aa/uploads', upload.fields([
           .map(t => t.trim())
           .filter(Boolean);
 
-        // Assign topic tags to unique fields, only if value exists
-        topicList.forEach((topic, i) => {
-          if (i < MAX_TOPICS) {
-            row[`Tag: Topic_${i + 1}`] = topic;
-          }
-        });
+        for (let i = 0; i < MAX_TOPICS; i++) {
+          row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
+        }
 
         const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
         labels.forEach((label, i) => {
@@ -84,7 +81,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
         return row;
       });
 
-    // Identify used topic columns
     const usedTopicCols = new Set();
     rawRows.forEach(row => {
       for (let i = 1; i <= MAX_TOPICS; i++) {
@@ -103,45 +99,44 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
-    // Construct headers with all "Tag: Topic_*" renamed to "Tag: Topic"
-    const headersSet = new Set();
-    const headers = [];
-    for (const key of Object.keys(csvRows[0] || {})) {
-      if (key.toLowerCase().startsWith('tag: topic')) {
-        let i = 1;
-        let tag = 'Tag: Topic';
-        while (headersSet.has(tag)) {
-          i++;
-          tag = 'Tag: Topic'; // All headers just repeat the same
-        }
-        headersSet.add(tag);
-        headers.push(tag);
-      } else {
-        headersSet.add(key);
-        headers.push(key);
-      }
-    }
-
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
+
+    const originalHeaders = Object.keys(csvRows[0] || []);
+const headers = [];
+const seen = new Set();
+
+originalHeaders.forEach(key => {
+  if (key.toLowerCase().startsWith('tag: topic')) {
+    let colName = 'Tag: Topic';
+    let suffix = 1;
+    while (seen.has(colName)) {
+      suffix++;
+      colName = `Tag: Topic ${suffix}`;
+    }
+    seen.add(colName);
+    headers.push(colName);
+  } else {
+    headers.push(key);
+  }
+});
 
     const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
 
-    csvRows.forEach(row => {
-      const outputRow = {};
-      for (const [key, value] of Object.entries(row)) {
-        const outKey = key.toLowerCase().startsWith('tag: topic') ? 'Tag: Topic' : key;
-        if (outputRow[outKey]) {
-          let i = 2;
-          while (outputRow[`Tag: Topic_${i}`]) i++;
-          outputRow[`Tag: Topic_${i}`] = value;
-        } else {
-          outputRow[outKey] = value;
-        }
-      }
-      csvStream.write(outputRow);
-    });
+   csvRows.forEach(row => {
+  const renamedRow = {};
+  let topicIndex = 1;
+  for (const key of Object.keys(row)) {
+    if (key.toLowerCase().startsWith('tag: topic')) {
+      renamedRow[`Tag: Topic ${topicIndex}`] = row[key];
+      topicIndex++;
+    } else {
+      renamedRow[key] = row[key];
+    }
+  }
+  csvStream.write(renamedRow);
+});
 
     csvStream.end();
 
