@@ -23,6 +23,9 @@ async function parseQuestionsFromPDF(buffer) {
     console.log(`\n[Q${questionNum}] Question: ${question}`);
 
     const choiceRegex = /(?:^|\n)\s*(\d+|✓)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d+|✓)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
+    const cleanText = text.split(/(Category Name|Rationale:|Item ID:|Item Description:|Attachment:)/)[0].trim();
+    choices[index] = cleanText;
+
 
     const choices = [];
     let match;
