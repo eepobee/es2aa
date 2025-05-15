@@ -7,17 +7,7 @@ async function parseQuestionsFromPDF(buffer) {
   const text = data.text;
   const questions = [];
 
-  const rawBlocks = [];
-const blockRegex = /(?:Question #:\s*\d+)?\s*((?:.*?(?:\n|$))+?(?=\n\s*[✓]?\s*[A-K]\.))/g;
-
-let match;
-while ((match = blockRegex.exec(text)) !== null) {
-  const block = match[1].trim();
-  // Only keep blocks that include at least 2 answer letters
-  if ((block.match(/\n\s*[✓]?\s*[A-K]\./g) || []).length >= 2) {
-    rawBlocks.push(block);
-  }
-}
+  const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
 
   for (let i = 0; i < rawBlocks.length; i++) {
     const block = rawBlocks[i];
@@ -28,7 +18,7 @@ while ((match = blockRegex.exec(text)) !== null) {
 
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n\s*[✓]?\s*[A-K]\.)/s);
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n\s*[✓3]?\s*[A-K]\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
     console.log(`\n[Q${questionNum}] Question: ${question}`);
 
