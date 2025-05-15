@@ -64,10 +64,11 @@ app.post('/tools/es2aa/uploads', upload.fields([
           'Correct Feedback': meta.feedback || ''
         };
 
-        const topicList = (meta.topics || '')
-          .split(/[,;]/)
-          .map(t => t.trim())
-          .filter(Boolean);
+        const topicList = Array.from(new Set(
+  Array.isArray(meta.topics)
+    ? meta.topics
+    : (meta.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean)
+));
 
         for (let i = 0; i < MAX_TOPICS; i++) {
           row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
@@ -102,39 +103,41 @@ app.post('/tools/es2aa/uploads', upload.fields([
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
 
-    const originalHeaders = Object.keys(csvRows[0] || []);
-const headers = [];
-const seen = new Set();
+ const originalHeaders = Object.keys(csvRows[0] || {});
+const topicHeaders = [];
+const nonTopicHeaders = [];
 
 originalHeaders.forEach(key => {
   if (key.toLowerCase().startsWith('tag: topic')) {
-    let colName = 'Tag: Topic';
-    let suffix = 1;
-    while (seen.has(colName)) {
-      suffix++;
-      colName = `Tag: Topic ${suffix}`;
-    }
-    seen.add(colName);
-    headers.push(colName);
+    topicHeaders.push(`Tag: Topic ${topicHeaders.length + 1}`);
   } else {
-    headers.push(key);
+    nonTopicHeaders.push(key);
   }
 });
+
+const headers = [...nonTopicHeaders, ...topicHeaders];
 
     const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
 
-   csvRows.forEach(row => {
+ csvRows.forEach(row => {
   const renamedRow = {};
-  let topicIndex = 1;
-  for (const key of Object.keys(row)) {
+  const topics = [];
+
+  // Separate topics and non-topics
+  for (const key in row) {
     if (key.toLowerCase().startsWith('tag: topic')) {
-      renamedRow[`Tag: Topic ${topicIndex}`] = row[key];
-      topicIndex++;
+      topics.push(row[key]);
     } else {
       renamedRow[key] = row[key];
     }
   }
+
+  // Reassign topics to match headers
+  topics.forEach((val, idx) => {
+    renamedRow[`Tag: Topic ${idx + 1}`] = val;
+  });
+
   csvStream.write(renamedRow);
 });
 
