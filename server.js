@@ -39,6 +39,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
     }
 
     const MAX_TOPICS = 5;
+
     const rawRows = questions
       .filter(q => {
         const meta = metadataMap[q.id];
@@ -70,7 +71,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
         ));
 
         for (let i = 0; i < MAX_TOPICS; i++) {
-          row[`Tag: Topic ${i}`] = topicList[i] || '';
+          row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
         }
 
         const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
@@ -81,15 +82,16 @@ app.post('/tools/es2aa/uploads', upload.fields([
         return row;
       });
 
-    // Keep only topic columns that were actually used
+    // Identify which topic columns are actually used
     const usedTopicCols = new Set();
     rawRows.forEach(row => {
-      for (let i = 0; i < MAX_TOPICS; i++) {
-        const key = `Tag: Topic ${i}`;
+      for (let i = 1; i <= MAX_TOPICS; i++) {
+        const key = `Tag: Topic_${i}`;
         if (row[key]) usedTopicCols.add(key);
       }
     });
 
+    // Keep only used topic columns
     const csvRows = rawRows.map(row => {
       const newRow = {};
       for (const key in row) {
@@ -100,16 +102,12 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
-    // Now flatten column headers so all topic headers are "Tag: Topic"
+    // Extract header order
     const firstRow = csvRows[0] || {};
-    const headers = [];
-    for (const key in firstRow) {
-      if (key.startsWith('Tag: Topic')) {
-        headers.push('Tag: Topic'); // all identical
-      } else {
-        headers.push(key);
-      }
-    }
+    const originalHeaders = Object.keys(firstRow);
+    const topicHeaders = originalHeaders.filter(h => h.startsWith('Tag: Topic_'));
+    const nonTopicHeaders = originalHeaders.filter(h => !h.startsWith('Tag: Topic_'));
+    const headers = [...nonTopicHeaders, ...topicHeaders];
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
@@ -117,48 +115,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
     const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
 
-    csvRows.forEach(row => {
-      const finalRow = {};
-      let topicIndex = 0;
-
-      for (const key in row) {
-        if (key.startsWith('Tag: Topic')) {
-          finalRow[`Tag: Topic ${topicIndex++}`] = row[key];
-        } else {
-          finalRow[key] = row[key];
-        }
-      }
-
-      // Output same label for all topic keys
-      const outputRow = {};
-      for (const key in finalRow) {
-        if (key.startsWith('Tag: Topic')) {
-          outputRow['Tag: Topic'] = finalRow[key];
-        } else {
-          outputRow[key] = finalRow[key];
-        }
-      }
-
-      // ensure repeated 'Tag: Topic' keys with unique values
-      const groupedTopics = [];
-      for (let i = 0; i < MAX_TOPICS; i++) {
-        const topicVal = finalRow[`Tag: Topic ${i}`];
-        if (topicVal) groupedTopics.push(topicVal);
-      }
-
-      const outputFinal = {};
-      for (const key in finalRow) {
-        if (!key.startsWith('Tag: Topic')) {
-          outputFinal[key] = finalRow[key];
-        }
-      }
-
-      groupedTopics.forEach(topic => {
-        outputFinal['Tag: Topic'] = topic;
-        csvStream.write(outputFinal);
-      });
-    });
-
+    csvRows.forEach(row => csvStream.write(row));
     csvStream.end();
 
     fs.unlinkSync(pdfPath);
