@@ -65,12 +65,12 @@ app.post('/tools/es2aa/uploads', upload.fields([
         };
 
         const topicList = (meta.topics || '')
-          .split(/\s*[,;]\s*/)
+          .split(/[,;]/)
           .map(t => t.trim())
           .filter(Boolean);
 
         for (let i = 0; i < MAX_TOPICS; i++) {
-          row[`Tag: Topic ${i + 1}`] = topicList[i] || '';
+          row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
         }
 
         const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
@@ -84,7 +84,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
     const usedTopicCols = new Set();
     rawRows.forEach(row => {
       for (let i = 1; i <= MAX_TOPICS; i++) {
-        const key = `Tag: Topic ${i}`;
+        const key = `Tag: Topic_${i}`;
         if (row[key]) usedTopicCols.add(key);
       }
     });
@@ -99,8 +99,10 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
-    // Build flattened headers (renaming Tag: Topic # => Tag: Topic)
-    const originalHeaders = Object.keys(csvRows[0] || []);
+    res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
+    res.setHeader('Content-Type', 'text/csv');
+
+    const originalHeaders = Object.keys(csvRows[0] || {});
     const headerMap = {};
     const headers = originalHeaders.map(key => {
       if (key.toLowerCase().startsWith('tag: topic')) {
@@ -119,8 +121,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     });
 
-    res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
-    res.setHeader('Content-Type', 'text/csv');
     const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
 
