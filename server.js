@@ -5,9 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
+const parseXLSXMetadata = require('./parsers/xlsxParser');
+
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-const parseXLSXMetadata = require('./parsers/xlsxParser');
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
@@ -98,24 +99,37 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
+    // Build flattened headers (renaming Tag: Topic # => Tag: Topic)
+    const originalHeaders = Object.keys(csvRows[0] || []);
+    const headerMap = {};
+    const headers = originalHeaders.map(key => {
+      if (key.toLowerCase().startsWith('tag: topic')) {
+        const base = 'Tag: Topic';
+        let count = 1;
+        let finalKey = base;
+        while (Object.values(headerMap).includes(finalKey)) {
+          count++;
+          finalKey = `${base}_${count}`;
+        }
+        headerMap[key] = finalKey;
+        return finalKey;
+      } else {
+        headerMap[key] = key;
+        return key;
+      }
+    });
+
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
-
-    const csvStream = csvWriter.format({ headers: true });
+    const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
 
-    csvRows.forEach(originalRow => {
-      const row = {};
-
-      for (const [key, value] of Object.entries(originalRow)) {
-        let newKey = key;
-        if (key.toLowerCase().startsWith('tag: topic_')) {
-          newKey = 'Tag: Topic';
-        }
-        row[newKey] = value;
+    csvRows.forEach(row => {
+      const renamedRow = {};
+      for (const [key, value] of Object.entries(row)) {
+        renamedRow[headerMap[key]] = value;
       }
-
-      csvStream.write(row);
+      csvStream.write(renamedRow);
     });
 
     csvStream.end();
