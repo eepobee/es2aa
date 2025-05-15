@@ -102,21 +102,13 @@ app.post('/tools/es2aa/uploads', upload.fields([
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
 
-    const originalHeaders = Object.keys(csvRows[0] || {});
+    const originalHeaders = Object.keys(csvRows[0] || []);
     const headerMap = {};
     const headers = originalHeaders.map(key => {
       if (key.toLowerCase().startsWith('tag: topic')) {
         const base = 'Tag: Topic';
-        let count = 1;
-        let finalKey = base;
-        while (Object.values(headerMap).includes(finalKey)) {
-          count++;
-          finalKey = `${base}_${count}`;
-        }
-        headerMap[key] = finalKey;
-        return finalKey;
+        return base; // <<< MAKE THIS LINE ONLY
       } else {
-        headerMap[key] = key;
         return key;
       }
     });
@@ -125,12 +117,18 @@ app.post('/tools/es2aa/uploads', upload.fields([
     csvStream.pipe(res);
 
     csvRows.forEach(row => {
-      const renamedRow = {};
-      for (const [key, value] of Object.entries(row)) {
-        renamedRow[headerMap[key]] = value;
-      }
-      csvStream.write(renamedRow);
-    });
+  const ordered = headers.map(h => {
+    // for each appearance of 'Tag: Topic', pull next matching field
+    if (h === 'Tag: Topic') {
+      const topicKeys = Object.keys(row).filter(k => k.toLowerCase().startsWith('tag: topic'));
+      return topicKeys.shift() ? row[topicKeys.shift()] : '';
+    } else {
+      return row[h] ?? '';
+    }
+  });
+
+  csvStream.write(ordered);
+});
 
     csvStream.end();
 
