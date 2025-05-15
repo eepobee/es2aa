@@ -18,7 +18,7 @@ async function parseQuestionsFromPDF(buffer) {
 
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d*[\u2713✓]?\s*[A-F]\.))/s);
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d*[\u2713✓]?\s*[A-K]\.))/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
     console.log(`\n[Q${questionNum}] Question: ${question}`);
 
@@ -27,7 +27,7 @@ async function parseQuestionsFromPDF(buffer) {
 
     console.log(`\n[Q${questionNum}] Choices:`);
 
-    const choiceRegex = /(?:^|\n)\s*(✓|\d+)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:✓|\d+)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Attachment:|Item Categories:|Category Name|Item Creator:|$))/gs;
+    const choiceRegex = /(?:^|\n)\s*(✓|\d+)?\s*([A-K])\.\s*(.*?)(?=(?:\n\s*(?:✓|\d+)?\s*[A-K]\.|Rationale:|Item ID:|Item Description:|Attachment:|Item Categories:|Category Name|Item Creator:|$))/gs;
 
     let match;
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
@@ -41,7 +41,7 @@ async function parseQuestionsFromPDF(buffer) {
       // Remove trailing label junk within the option text
       text = text.replace(/(Category Name|Attachment:|Item ID:).*$/is, '').trim();
 
-      const index = 'ABCDEF'.indexOf(letter);
+      const index = 'ABCDEFGHIJK'.indexOf(letter);
       choices[index] = text;
 
       const isCorrect = marker && (marker === '✓' || /^\d+$/.test(marker));

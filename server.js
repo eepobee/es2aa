@@ -65,7 +65,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
           'Correct Feedback': meta.feedback || ''
         };
 
-        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
         labels.forEach((label, i) => {
           row[`Option ${label}`] = q.choices?.[i] || '';
         });
