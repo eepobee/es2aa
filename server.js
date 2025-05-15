@@ -1,4 +1,3 @@
-// server.js
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
@@ -39,7 +38,9 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     }
 
-    const csvRows = questions
+    const MAX_TOPICS = 5;
+
+    const rawRows = questions
       .filter(q => {
         const meta = metadataMap[q.id];
         return meta && meta.type === 'Multiple Choice';
@@ -57,13 +58,18 @@ app.post('/tools/es2aa/uploads', upload.fields([
           'Question Text': q.question || '',
           'Correct Answer': q.correctAnswer || '',
           'Question Type': meta.type || '',
-          'Tag: Topics': meta.topics || '',
           "Tag: Bloom's": meta.bloom || '',
           'Tag: Level': level,
           'Tag: NCLEX': meta.nclex || '',
           'Tag: Course #': course,
           'Correct Feedback': meta.feedback || ''
         };
+
+        // Assign up to MAX_TOPICS
+        const topicList = (meta.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
+        for (let i = 0; i < MAX_TOPICS; i++) {
+          row[`Tag: Topic ${i + 1}`] = topicList[i] || '';
+        }
 
         const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
         labels.forEach((label, i) => {
@@ -73,9 +79,33 @@ app.post('/tools/es2aa/uploads', upload.fields([
         return row;
       });
 
+    // Remove unused Tag: Topic columns
+    const usedTopicCols = new Set();
+    rawRows.forEach(row => {
+      for (let i = 1; i <= MAX_TOPICS; i++) {
+        const key = `Tag: Topic ${i}`;
+        if (row[key]) usedTopicCols.add(key);
+      }
+    });
+
+    const csvRows = rawRows.map(row => {
+      const newRow = {};
+      for (const key in row) {
+        if (!key.startsWith('Tag: Topic') || usedTopicCols.has(key)) {
+          newRow[key] = row[key];
+        }
+      }
+      return newRow;
+    });
+
+    // Flatten headers (every topic column appears as "Tag: Topic")
+    const headers = Object.keys(csvRows[0] || {}).map(key =>
+      key.startsWith('Tag: Topic') ? 'Tag: Topic' : key
+    );
+
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
-    const csvStream = csvWriter.format({ headers: true });
+    const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
     csvRows.forEach(row => csvStream.write(row));
     csvStream.end();
