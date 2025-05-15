@@ -65,8 +65,12 @@ app.post('/tools/es2aa/uploads', upload.fields([
           'Correct Feedback': meta.feedback || ''
         };
 
-        // Assign up to MAX_TOPICS
-        const topicList = (meta.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean);
+        // Break topics into multiple columns (comma or semicolon separated)
+        const topicList = (meta.topics || '')
+          .split(/[,;]+/)
+          .map(t => t.trim())
+          .filter(Boolean);
+
         for (let i = 0; i < MAX_TOPICS; i++) {
           row[`Tag: Topic ${i + 1}`] = topicList[i] || '';
         }
@@ -79,7 +83,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
         return row;
       });
 
-    // Remove unused Tag: Topic columns
+    // Identify only used topic columns
     const usedTopicCols = new Set();
     rawRows.forEach(row => {
       for (let i = 1; i <= MAX_TOPICS; i++) {
@@ -98,7 +102,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
-    // Flatten headers (every topic column appears as "Tag: Topic")
+    // Create headers, renaming all used topic columns to "Tag: Topic"
     const headers = Object.keys(csvRows[0] || {}).map(key =>
       key.startsWith('Tag: Topic') ? 'Tag: Topic' : key
     );

@@ -67,7 +67,7 @@ function parseXLSXMetadata(filePath) {
     const topics = allTags
       .filter(tag => !exclusions.has(tag))
       .map(tag => tag.replace(/^0[1-6]\s*-?\s*/, '')) // remove prefix from topics
-      .join('; ');
+      .join(', ');
 
     metadata[id] = {
       type: 'Multiple Choice', // force normalized
