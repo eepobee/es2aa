@@ -24,18 +24,24 @@ async function parseQuestionsFromPDF(buffer) {
 
     const choices = [];
     const correctLetters = [];
-    const choiceRegex = /(?:^|\n)\s*(\d+|✓)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:\d+|✓)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Item Categories:|Item Creator:|$))/gs;
-    
-    let match;
 
     console.log(`\n[Q${questionNum}] Choices:`);
 
+    const choiceRegex = /(?:^|\n)\s*(✓|\d+)?\s*([A-F])\.\s*(.*?)(?=(?:\n\s*(?:✓|\d+)?\s*[A-F]\.|Rationale:|Item ID:|Item Description:|Attachment:|Item Categories:|Category Name|Item Creator:|$))/gs;
+
+    let match;
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
       const marker = match[1] ? match[1].trim() : '';
       const letter = match[2];
-      const text = match[3].trim();
-      const index = 'ABCDEF'.indexOf(letter);
+      let text = match[3].trim();
 
+      // Skip clearly invalid junk options (page break bleed)
+      if (/^(Category|Item|Attachment|Rationale)/i.test(text)) continue;
+
+      // Remove trailing label junk within the option text
+      text = text.replace(/(Category Name|Attachment:|Item ID:).*$/is, '').trim();
+
+      const index = 'ABCDEF'.indexOf(letter);
       choices[index] = text;
 
       const isCorrect = marker && (marker === '✓' || /^\d+$/.test(marker));
