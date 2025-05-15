@@ -105,14 +105,34 @@ app.post('/tools/es2aa/uploads', upload.fields([
     });
 
     // Create headers, renaming all used topic columns to "Tag: Topic"
-    const headers = Object.keys(csvRows[0] || {});
-
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
-    res.setHeader('Content-Type', 'text/csv');
-    const csvStream = csvWriter.format({ headers });
-    csvStream.pipe(res);
-    csvRows.forEach(row => csvStream.write(row));
-    csvStream.end();
+res.setHeader('Content-Type', 'text/csv');
+
+const csvStream = csvWriter.format({ headers: true });
+csvStream.pipe(res);
+
+// Write rows with dynamic header renaming
+csvRows.forEach(originalRow => {
+  const row = {};
+
+  for (const [key, value] of Object.entries(originalRow)) {
+    // Rename all "Tag: Topic #" keys to just "Tag: Topic"
+    const newKey = key.startsWith('Tag: Topic') ? 'Tag: Topic' : key;
+
+    // If the key already exists (i.e. duplicate), make a new one
+    if (newKey === 'Tag: Topic' && newKey in row) {
+      let i = 2;
+      while (`Tag: Topic_${i}` in row) i++;
+      row[`Tag: Topic_${i}`] = value;
+    } else {
+      row[newKey] = value;
+    }
+  }
+
+  csvStream.write(row);
+});
+
+csvStream.end();
 
     fs.unlinkSync(pdfPath);
     if (xlsxPath) fs.unlinkSync(xlsxPath);
