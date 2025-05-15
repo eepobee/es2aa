@@ -1,12 +1,12 @@
 // File: parsers/regexParser.js
 
 const pdfParse = require('pdf-parse');
-console.log('\n========== RAW PDF TEXT START ==========\n');
-console.log(data.text.slice(0, 3000)); // adjust the length as needed
-console.log('\n========== RAW PDF TEXT END ==========\n');
 
 async function parseQuestionsFromPDF(buffer) {
   const data = await pdfParse(buffer);
+  console.log('\n========== RAW PDF TEXT START ==========\n');
+console.log(data.text.slice(0, 3000)); // adjust the length as needed
+console.log('\n========== RAW PDF TEXT END ==========\n');
   const text = data.text;
   const questions = [];
 
