@@ -70,8 +70,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
         // Break topics into multiple columns (comma or semicolon separated)
         const topicList = (meta.topics || '')
          .split(/\s*[,;]\s*/)
-          .map(t => t.trim())
-          .filter(Boolean);
+           .filter(Boolean);
 
         for (let i = 0; i < MAX_TOPICS; i++) {
           row[`Tag: Topic ${i + 1}`] = topicList[i] || '';
