@@ -9,6 +9,11 @@ body {
   min-height: 100vh;
 }
 
+/* Fix overflow caused by padding + borders on 100%-width elements */
+* {
+  box-sizing: border-box;
+}
+
 .container {
   background: white;
   padding: 40px 30px;
