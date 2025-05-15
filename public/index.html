@@ -9,15 +9,26 @@
 <body>
   <div class="container">
     <h1>ExamSoft → Atomic Assessments</h1>
-    <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>    
+    <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>
+
     <form action="/tools/es2aa/uploads" method="post" enctype="multipart/form-data">
-  <label>Upload ExamSoft PDF:</label>
-  <input type="file" name="pdf" accept="application/pdf" required><br><br>
-  <label>Upload Excel metadata (optional):</label>
-  <input type="file" name="xlsx" accept=".xlsx,.xls"><br><br>
-  <button type="submit">Upload and Convert</button>
-</form>
-    
+      <label class="file-dropzone">
+        Upload ExamSoft PDF (click or drag file here)
+        <input type="file" name="pdf" accept="application/pdf" required>
+      </label>
+
+      <label class="file-dropzone">
+        Upload Excel metadata (optional) (click or drag file here)
+        <input type="file" name="xlsx" accept=".xlsx,.xls">
+      </label>
+
+      <button type="submit" class="btn-blue">Upload and Convert</button>
+    </form>
+
+    <a href="https://es2aa.s3.us-east-1.amazonaws.com/csvHeaderTool.html" target="_blank">
+      <button type="button" class="btn-orange">Go to CSV Header Renamer Tool</button>
+    </a>
+
     <footer>
       <p>&copy; Jefferson College of Nursing</p>
     </footer>
