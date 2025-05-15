@@ -65,6 +65,8 @@ app.post('/tools/es2aa/uploads', upload.fields([
           'Correct Feedback': meta.feedback || ''
         };
 
+        console.log(`Q${q.id}: meta.topics =`, meta.topics);
+
         // Break topics into multiple columns (comma or semicolon separated)
         const topicList = (meta.topics || '')
           .split(/[,;]+/)
