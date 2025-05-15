@@ -30,15 +30,18 @@ function parseXLSXMetadata(filePath) {
   const metadata = {};
   for (const row of rows) {
     const id = row['ID/Rev']?.toString().trim();
+    const type = row['Type']?.toString().trim();
+
+    // 🚫 Skip if not MChoice
+    if (!id || type.toLowerCase() !== 'mchoice') continue;
+
     const categories = row['Categories'] || '';
 
-    // Step 1: break all tags into list
     const allTags = categories
       .split(/[,;]/)
       .map(s => s.trim())
       .filter(Boolean);
 
-    // Step 2: find Bloom tag in compound form
     const bloomTag = allTags.find(tag => /^0[1-6]\s*-?\s*\w+/.test(tag));
     const bloom = bloomTag ? bloomTag.replace(/\s*-\s*/, ' ').trim() : '';
 
@@ -48,7 +51,6 @@ function parseXLSXMetadata(filePath) {
 
     let nclex = '';
     const exclusions = new Set();
-
     if (bloomTag) exclusions.add(bloomTag);
     if (course) exclusions.add(course);
 
@@ -62,14 +64,13 @@ function parseXLSXMetadata(filePath) {
       }
     }
 
-    // Step 3: remove excluded tags and optionally strip number prefix from topic tag
     const topics = allTags
       .filter(tag => !exclusions.has(tag))
-      .map(tag => tag.replace(/^0[1-6]\s*-?\s*/, '')) // remove "01 -" prefix in topics
+      .map(tag => tag.replace(/^0[1-6]\s*-?\s*/, '')) // remove prefix from topics
       .join('; ');
 
     metadata[id] = {
-      type: row['Type']?.toString().trim().toLowerCase() === 'mchoice' ? 'Multiple Choice' : (row['Type'] || ''),
+      type: 'Multiple Choice', // force normalized
       bloom,
       course,
       level,

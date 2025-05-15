@@ -8,7 +8,7 @@ const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
 const app = express();
 const upload = multer({ dest: 'uploads/' });
-const parseXLSXMetadata = require('./parsers/xlsxParser'); // <- New module
+const parseXLSXMetadata = require('./parsers/xlsxParser');
 
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
@@ -25,48 +25,53 @@ app.post('/tools/es2aa/uploads', upload.fields([
 
     let metadataMap = {};
     if (xlsxPath) {
-  metadataMap = await parseXLSXMetadata(xlsxPath);
-}
+      metadataMap = await parseXLSXMetadata(xlsxPath);
+    }
 
-// Get fallback course/level from first match
-let fallbackCourse = '';
-let fallbackLevel = '';
-for (const meta of Object.values(metadataMap)) {
-  if (meta.course && meta.level) {
-    fallbackCourse = meta.course;
-    fallbackLevel = meta.level;
-    break;
-  }
-}
+    // Get fallback course/level from first match
+    let fallbackCourse = '';
+    let fallbackLevel = '';
+    for (const meta of Object.values(metadataMap)) {
+      if (meta.course && meta.level) {
+        fallbackCourse = meta.course;
+        fallbackLevel = meta.level;
+        break;
+      }
+    }
 
-const csvRows = questions.map(q => {
-  const meta = metadataMap[q.id] || {};
+    const csvRows = questions
+      .filter(q => {
+        const meta = metadataMap[q.id];
+        return meta && meta.type === 'Multiple Choice';
+      })
+      .map(q => {
+        const meta = metadataMap[q.id];
 
-  const level = meta.level || fallbackLevel;
-  const course = meta.course || fallbackCourse;
-  const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
+        const level = meta.level || fallbackLevel;
+        const course = meta.course || fallbackCourse;
+        const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
 
-  const row = {
-    'Question ID': q.id ? prefix + q.id : '',
-    Title: q.id || '',
-    'Question Text': q.question || '',
-    'Correct Answer': q.correctAnswer || '',
-    'Question Type': (meta.type || '').toLowerCase() === 'mchoice' ? 'multiple choice' : (meta.type || ''),
-    'Tag: Topics': meta.topics || '',
-    "Tag: Bloom's": meta.bloom || '',
-    'Tag: Level': level,
-    'Tag: NCLEX': meta.nclex || '',
-    'Tag: Course #': course,
-    'Correct Feedback': meta.feedback || ''
-  };
+        const row = {
+          'Question ID': q.id ? prefix + q.id : '',
+          Title: q.id || '',
+          'Question Text': q.question || '',
+          'Correct Answer': q.correctAnswer || '',
+          'Question Type': meta.type || '',
+          'Tag: Topics': meta.topics || '',
+          "Tag: Bloom's": meta.bloom || '',
+          'Tag: Level': level,
+          'Tag: NCLEX': meta.nclex || '',
+          'Tag: Course #': course,
+          'Correct Feedback': meta.feedback || ''
+        };
 
-  const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
-  labels.forEach((label, i) => {
-    row[`Option ${label}`] = q.choices?.[i] || '';
-  });
+        const labels = ['A', 'B', 'C', 'D', 'E', 'F'];
+        labels.forEach((label, i) => {
+          row[`Option ${label}`] = q.choices?.[i] || '';
+        });
 
-  return row;
-});
+        return row;
+      });
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
