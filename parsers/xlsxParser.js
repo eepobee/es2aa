@@ -32,40 +32,41 @@ function parseXLSXMetadata(filePath) {
     const id = row['ID/Rev']?.toString().trim();
     const categories = row['Categories'] || '';
 
-    const bloomMatch = categories.match(/\b0[1-6]\s*-?\s*\w+/);
-    const courseMatch = categories.match(/\bNU\s*\d{3}\b/);
+    // Step 1: break all tags into list
+    const allTags = categories
+      .split(/[,;]/)
+      .map(s => s.trim())
+      .filter(Boolean);
 
-        const bloom = bloomMatch ? bloomMatch[0].replace(/\s*-\s*/, ' ').trim() : '';
+    // Step 2: find Bloom tag in compound form
+    const bloomTag = allTags.find(tag => /^0[1-6]\s*-?\s*\w+/.test(tag));
+    const bloom = bloomTag ? bloomTag.replace(/\s*-\s*/, ' ').trim() : '';
+
+    const courseMatch = categories.match(/\bNU\s*\d{3}\b/);
     const course = courseMatch ? courseMatch[0].trim() : '';
     const level = course ? getLevel(course) : '';
 
     let nclex = '';
-    const exclusions = [];
+    const exclusions = new Set();
 
-    if (bloom) exclusions.push(bloom, bloom.replace(' ', '-'), bloom.replace('-', ' '));
-    if (course) exclusions.push(course);
+    if (bloomTag) exclusions.add(bloomTag);
+    if (course) exclusions.add(course);
 
     for (const domain of NCLEX_DOMAINS) {
       if (categories.includes(domain)) {
-        if (domain === 'Reduction of Risk Potentia') {
-          nclex = 'Reduction of Risk Potential';
-          exclusions.push('Reduction of Risk Potentia');
-        } else {
-          nclex = domain;
-          exclusions.push(domain);
-        }
+        nclex = domain === 'Reduction of Risk Potentia'
+          ? 'Reduction of Risk Potential'
+          : domain;
+        exclusions.add(domain);
         break;
       }
     }
 
-   // Normalize category delimiters (handle comma or semicolon)
-const allTags = categories
-  .split(/[,;]/)
-  .map(s => s.trim())
-  .filter(Boolean);
-
-// Remove exact matches with anything in exclusions
-const topics = allTags.filter(tag => !exclusions.includes(tag)).join('; ');
+    // Step 3: remove excluded tags and optionally strip number prefix from topic tag
+    const topics = allTags
+      .filter(tag => !exclusions.has(tag))
+      .map(tag => tag.replace(/^0[1-6]\s*-?\s*/, '')) // remove "01 -" prefix in topics
+      .join('; ');
 
     metadata[id] = {
       type: row['Type']?.toString().trim().toLowerCase() === 'mchoice' ? 'Multiple Choice' : (row['Type'] || ''),
