@@ -65,10 +65,10 @@ app.post('/tools/es2aa/uploads', upload.fields([
         };
 
         const topicList = Array.from(new Set(
-  Array.isArray(meta.topics)
-    ? meta.topics
-    : (meta.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean)
-));
+          Array.isArray(meta.topics)
+            ? meta.topics
+            : (meta.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean)
+        ));
 
         for (let i = 0; i < MAX_TOPICS; i++) {
           row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
@@ -82,6 +82,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
         return row;
       });
 
+    // Identify which topic columns are actually used
     const usedTopicCols = new Set();
     rawRows.forEach(row => {
       for (let i = 1; i <= MAX_TOPICS; i++) {
@@ -90,6 +91,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     });
 
+    // Keep only used topic columns
     const csvRows = rawRows.map(row => {
       const newRow = {};
       for (const key in row) {
@@ -100,47 +102,20 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
+    // Extract header order
+    const firstRow = csvRows[0] || {};
+    const originalHeaders = Object.keys(firstRow);
+    const topicHeaders = originalHeaders.filter(h => h.startsWith('Tag: Topic_'));
+    const nonTopicHeaders = originalHeaders.filter(h => !h.startsWith('Tag: Topic_'));
+    const headers = [...nonTopicHeaders, ...topicHeaders];
+
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
-
- const originalHeaders = Object.keys(csvRows[0] || {});
-const topicHeaders = [];
-const nonTopicHeaders = [];
-
-originalHeaders.forEach(key => {
-  if (key.toLowerCase().startsWith('tag: topic')) {
-    topicHeaders.push(`Tag: Topic ${topicHeaders.length + 1}`);
-  } else {
-    nonTopicHeaders.push(key);
-  }
-});
-
-const headers = [...nonTopicHeaders, ...topicHeaders];
 
     const csvStream = csvWriter.format({ headers });
     csvStream.pipe(res);
 
- csvRows.forEach(row => {
-  const renamedRow = {};
-  const topics = [];
-
-  // Separate topics and non-topics
-  for (const key in row) {
-    if (key.toLowerCase().startsWith('tag: topic')) {
-      topics.push(row[key]);
-    } else {
-      renamedRow[key] = row[key];
-    }
-  }
-
-  // Reassign topics to match headers
-  topics.forEach((val, idx) => {
-    renamedRow[`Tag: Topic ${idx + 1}`] = val;
-  });
-
-  csvStream.write(renamedRow);
-});
-
+    csvRows.forEach(row => csvStream.write(row));
     csvStream.end();
 
     fs.unlinkSync(pdfPath);
