@@ -35,12 +35,15 @@ function parseXLSXMetadata(filePath) {
     const bloomMatch = categories.match(/\b0[1-6]\s*-?\s*\w+/);
     const courseMatch = categories.match(/\bNU\s*\d{3}\b/);
 
-    const bloom = bloomMatch ? bloomMatch[0].replace(/\s*-\s*/, ' ').trim() : '';
+        const bloom = bloomMatch ? bloomMatch[0].replace(/\s*-\s*/, ' ').trim() : '';
     const course = courseMatch ? courseMatch[0].trim() : '';
     const level = course ? getLevel(course) : '';
 
     let nclex = '';
-    const exclusions = [bloom, course];
+    const exclusions = [];
+
+    if (bloom) exclusions.push(bloom, bloom.replace(' ', '-'), bloom.replace('-', ' '));
+    if (course) exclusions.push(course);
 
     for (const domain of NCLEX_DOMAINS) {
       if (categories.includes(domain)) {
