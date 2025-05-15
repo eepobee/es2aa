@@ -58,8 +58,14 @@ function parseXLSXMetadata(filePath) {
       }
     }
 
-    const topics = categories.split(',').map(s => s.trim())
-      .filter(c => c && !exclusions.includes(c)).join('; ');
+   // Normalize category delimiters (handle comma or semicolon)
+const allTags = categories
+  .split(/[,;]/)
+  .map(s => s.trim())
+  .filter(Boolean);
+
+// Remove exact matches with anything in exclusions
+const topics = allTags.filter(tag => !exclusions.includes(tag)).join('; ');
 
     metadata[id] = {
       type: row['Type']?.toString().trim().toLowerCase() === 'mchoice' ? 'Multiple Choice' : (row['Type'] || ''),
