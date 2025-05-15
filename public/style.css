@@ -75,6 +75,7 @@ button {
   margin-top: 16px;
   cursor: pointer;
   transition: background 0.2s ease;
+  text-decoration: none; /* ← this removes the underline */
 }
 
 .btn-blue {
