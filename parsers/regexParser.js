@@ -5,8 +5,9 @@ const pdfParse = require('pdf-parse');
 async function parseQuestionsFromPDF(buffer) {
   const data = await pdfParse(buffer);
   console.log('\n========== RAW PDF TEXT START ==========\n');
-console.log(data.text.slice(0, 3000)); // adjust the length as needed
-console.log('\n========== RAW PDF TEXT END ==========\n');
+  console.log(data.text.slice(0, 3000)); // adjust the length as needed
+  console.log('\n========== RAW PDF TEXT END ==========\n');
+
   const text = data.text;
   const questions = [];
 
@@ -21,8 +22,23 @@ console.log('\n========== RAW PDF TEXT END ==========\n');
 
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n\s*(?:[✓3]?[A-K]|[✓3]\s*[A-K])\.)/s);
-    const question = questionMatch ? questionMatch[1].trim() : '';
+    // NEW: Extract question line based on position of first choice
+    const lines = cleanedBlock.split('\n');
+    let question = '';
+    let firstChoiceIndex = lines.findIndex(line =>
+      /^\s*[✓3]?\s*[A-K]\./.test(line)
+    );
+
+    if (firstChoiceIndex > 0) {
+      for (let j = firstChoiceIndex - 1; j >= 0; j--) {
+        const line = lines[j].trim();
+        if (line && /^[A-Z]/.test(line)) {
+          question = line;
+          break;
+        }
+      }
+    }
+
     console.log(`\n[Q${questionNum}] Question: ${question}`);
 
     const choices = [];
@@ -30,7 +46,7 @@ console.log('\n========== RAW PDF TEXT END ==========\n');
 
     console.log(`\n[Q${questionNum}] Choices:`);
 
-    const choiceRegex = /(?:^|\n)\s*(✓|\d+)?\s*([A-K])\.\s*(.*?)(?=(?:\n\s*(?:✓|\d+)?\s*[A-K]\.|Rationale:|Item ID:|Item Description:|Attachment:|Item Categories:|Category Name|Item Creator:|$))/gs;
+    const choiceRegex = /(?:^|\n)\s*(✓|3|\d+)?\s*([A-K])\.\s*(.*?)(?=(?:\n\s*(?:✓|3|\d+)?\s*[A-K]\.|Rationale:|Item ID:|Item Description:|Attachment:|Item Categories:|Category Name|Item Creator:|$))/gs;
 
     let match;
     while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
@@ -47,7 +63,7 @@ console.log('\n========== RAW PDF TEXT END ==========\n');
       const index = 'ABCDEFGHIJK'.indexOf(letter);
       choices[index] = text;
 
-      const isCorrect = marker && (marker === '✓' || /^\d+$/.test(marker));
+      const isCorrect = marker && (marker === '✓' || marker === '3' || /^\d+$/.test(marker));
       if (isCorrect) correctLetters.push(letter);
 
       console.log(`  [${marker || ' '}${letter}] ${text} ${isCorrect ? '<-- correct' : ''}`);
