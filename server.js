@@ -52,17 +52,18 @@ app.post('/tools/es2aa/uploads', upload.fields([
         const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
 
         const row = {
-          'Question ID': q.id ? prefix + q.id : '',
-          Title: q.id || '',
-          'Question Text': q.question || '',
-          'Correct Answer': q.correctAnswer || '',
-          'Question Type': meta.type || '',
-          "Tag: Bloom's": meta.bloom || '',
-          'Tag: Level': level,
-          'Tag: NCLEX': meta.nclex || '',
-          'Tag: Course #': course,
-          'Correct Feedback': meta.feedback || ''
-        };
+  'Question ID': q.id ? prefix + q.id : '',
+  Title: q.id || '',
+  'Question Text': q.question || '',
+  'Correct Answer': q.correctAnswer || '',
+  'Question Type': meta.type || '',
+  "Tag: Bloom's": meta.bloom || '',
+  'Tag: Level': level,
+  'Tag: NCLEX': meta.nclex || '',
+  'Tag: Course #': course,
+  'Correct Feedback': meta.feedback || '',
+  Template: q.correctAnswer?.includes(';') ? 'multiple response' : 'standard'
+};
 
         const topicList = Array.from(new Set(
           Array.isArray(meta.topics)
