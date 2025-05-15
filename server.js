@@ -70,7 +70,8 @@ app.post('/tools/es2aa/uploads', upload.fields([
         // Break topics into multiple columns (comma or semicolon separated)
         const topicList = (meta.topics || '')
          .split(/\s*[,;]\s*/)
-           .filter(Boolean);
+          .map(t => t.trim())
+          .filter(Boolean);
 
         for (let i = 0; i < MAX_TOPICS; i++) {
           row[`Tag: Topic ${i + 1}`] = topicList[i] || '';
@@ -104,9 +105,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
     });
 
     // Create headers, renaming all used topic columns to "Tag: Topic"
-    const headers = Object.keys(csvRows[0] || {}).map(key =>
-      key.startsWith('Tag: Topic') ? 'Tag: Topic' : key
-    );
+    const headers = Object.keys(csvRows[0] || {});
 
     res.setHeader('Content-disposition', 'attachment; filename=es2aa_output.csv');
     res.setHeader('Content-Type', 'text/csv');
