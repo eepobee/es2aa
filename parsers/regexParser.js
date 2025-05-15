@@ -18,7 +18,7 @@ async function parseQuestionsFromPDF(buffer) {
 
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
-    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n(?:\d*[\u2713✓]?\s*[A-K]\.))/s);
+    const questionMatch = cleanedBlock.match(/^(.*?)(?=\n\s*[✓]?\s*[A-K]\.)/s);
     const question = questionMatch ? questionMatch[1].trim() : '';
     console.log(`\n[Q${questionNum}] Question: ${question}`);
 
