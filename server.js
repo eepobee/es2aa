@@ -57,12 +57,12 @@ app.post('/tools/es2aa/uploads', upload.fields([
   'Question Text': q.question || '',
   'Correct Answer': q.correctAnswer || '',
   'Question Type': meta.type || '',
+  Template: q.correctAnswer?.includes(';') ? 'multiple response' : 'standard',
   "Tag: Bloom's": meta.bloom || '',
   'Tag: Level': level,
   'Tag: NCLEX': meta.nclex || '',
   'Tag: Course #': course,
-  'Correct Feedback': meta.feedback || '',
-  Template: q.correctAnswer?.includes(';') ? 'multiple response' : 'standard'
+  'Correct Feedback': meta.feedback || ''  
 };
 
         const topicList = Array.from(new Set(
