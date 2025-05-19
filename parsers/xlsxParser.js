@@ -65,7 +65,7 @@ function parseXLSXMetadata(filePath) {
     }
 
     const topics = allTags
-      .filter(tag => !exclusions.has(tag))
+      .filter(tag => !exclusions.has(tag) && !/imported_/i.test(tag))
       .map(tag => tag.replace(/^0[1-6]\s*-?\s*/, '')) // remove prefix from topics
       .join(', ');
 
