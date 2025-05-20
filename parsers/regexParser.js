@@ -30,13 +30,10 @@ async function parseQuestionsFromPDF(buffer) {
     );
 
     if (firstChoiceIndex > 0) {
-      for (let j = firstChoiceIndex - 1; j >= 0; j--) {
-        const line = lines[j].trim();
-        if (line && /^[A-Z]/.test(line)) {
-          question = line;
-          break;
-        }
-      }
+      const questionLines = lines.slice(0, firstChoiceIndex)
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+      question = questionLines.join(' ');
     }
 
     console.log(`\n[Q${questionNum}] Question: ${question}`);
