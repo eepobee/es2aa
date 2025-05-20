@@ -12,18 +12,17 @@
     <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>
 
     <form action="/tools/es2aa/uploads" method="post" enctype="multipart/form-data">
-      <label class="file-dropzone">
-        Upload ExamSoft PDF (click or drag file here)
-        <input type="file" name="pdf" accept="application/pdf" required>
-      </label>
+  <label for="pdfFile">Upload ExamSoft PDF</label>
+  <input type="file" id="pdfFile" name="pdf" accept="application/pdf" required>
 
-      <label class="file-dropzone">
-        Upload Excel metadata (optional) (click or drag file here)
-        <input type="file" name="xlsx" accept=".xlsx,.xls">
-      </label>
+  <label for="excelFile">Upload Excel metadata (optional)</label>
+  <input type="file" id="excelFile" name="xlsx" accept=".xlsx,.xls">
 
-      <button type="submit" class="btn-blue">Upload and Convert</button>
-    </form>
+  <button type="submit">Upload and Convert</button>
+</form>
+
+<p id="fileStatus"></p>
+
 <br>
 <br>
     <a href="https://es2aa.s3.us-east-1.amazonaws.com/csvHeaderTool.html" target="_blank" class="btn-orange-link">
@@ -35,5 +34,16 @@
       <p>&copy; Jefferson College of Nursing</p>
     </footer>
   </div>
+  <script>
+  document.getElementById('pdfFile').addEventListener('change', function () {
+    document.getElementById('fileStatus').textContent = `PDF Selected: ${this.files[0]?.name || 'None'}`;
+  });
+
+  document.getElementById('excelFile').addEventListener('change', function () {
+    const existing = document.getElementById('fileStatus').textContent;
+    document.getElementById('fileStatus').textContent = existing + ` | Excel Selected: ${this.files[0]?.name || 'None'}`;
+  });
+</script>
+
 </body>
 </html>
