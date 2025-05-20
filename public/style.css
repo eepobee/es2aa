@@ -19,7 +19,7 @@ body {
   padding: 40px 30px;
   border-radius: 16px;
   box-shadow: 0 2px 15px rgba(0,0,0,0.08);
-  max-width: 600px; /* was 480px */
+  max-width: 600px;
   width: 100%;
   text-align: center;
 }
@@ -35,12 +35,13 @@ p {
   color: #555;
 }
 
+/* Upload zone styling */
 .file-dropzone {
   position: relative;
   display: block;
   width: 100%;
   padding: 18px;
-  margin: 16px 0;
+  margin: 20px 0 10px;
   border: 2px dashed #007bff;
   border-radius: 8px;
   background-color: #f0f8ff;
@@ -63,6 +64,14 @@ p {
   cursor: pointer;
 }
 
+/* Filename display */
+.file-name {
+  font-size: 0.95rem;
+  color: #555;
+  margin-top: 5px;
+}
+
+/* Button styles */
 button {
   display: block;
   width: 100%;
@@ -75,7 +84,7 @@ button {
   margin-top: 16px;
   cursor: pointer;
   transition: background 0.2s ease;
-  text-decoration: none; /* ← this removes the underline */
+  text-decoration: none;
 }
 
 .btn-blue {
