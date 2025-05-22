@@ -61,25 +61,25 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
 
     // Normalize Bloom's taxonomy
     const BLOOM_LEVELS = {
-      '01': 'Remembering',
-      '02': 'Understanding',
-      '03': 'Applying',
-      '04': 'Analyzing',
-      '05': 'Evaluating',
-      '06': 'Creating'
-    };
+  '01': 'Remembering',
+  '02': 'Understanding',
+  '03': 'Applying',
+  '04': 'Analyzing',
+  '05': 'Evaluating',
+  '06': 'Creating'
+};
 
-    const bloomRaw = allTags.find(tag => /\b0[1-6]\b.*\b(Remember|Understand|Apply|Analyz|Evaluat|Creat)/i.test(tag));
-    let bloom = '';
+const bloomRaw = allTags.find(tag => /\b0[1-6]\b.*\b(Remember|Understand|Apply|Analyz|Evaluat|Creat)/i.test(tag));
+let bloom = '';
 
-    if (bloomRaw) {
-      const numMatch = bloomRaw.match(/\b0[1-6]\b/);
-      const num = numMatch ? numMatch[0] : '';
-      const label = BLOOM_LEVELS[num];
-      if (num && label) {
-        bloom = `${num} ${label}`;
-      }
-    }
+if (bloomRaw) {
+  const numMatch = bloomRaw.match(/\b0[1-6]\b/);
+  const num = numMatch ? numMatch[0] : '';
+  const label = BLOOM_LEVELS[num];
+  if (num && label) {
+    bloom = `${num} ${label}`;
+  }
+}
 
     // Course + Level extraction
     const courseTag = allTags.find(t => /\bNU\s*\d{3}\b/.test(t));
