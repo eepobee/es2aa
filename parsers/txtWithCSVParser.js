@@ -113,17 +113,32 @@ if (bloomRaw) {
         break;
       }
     }
-    const topicExclusions = [
-  'courses',
-  'new curriculum/',
-  'concepts/',
-  'body systems/',
-  'blooms taxonomy/'
-];
-
+    
 const topics = allTags
-  .filter(tag => tag && ![...exclusions].includes(tag))
-  .filter(tag => !topicExclusions.some(ex => tag.toLowerCase().includes(ex)))
+  .filter(tag => tag && ![...exclusions].has(tag))
+  .map(tag => {
+    const lower = tag.toLowerCase();
+
+    if (lower.startsWith('concepts/')) {
+      return tag.split('/')[1]?.trim();
+    }
+
+    if (lower.startsWith('body systems/')) {
+      return tag.split('/')[1]?.trim();
+    }
+
+    // Fully exclude the following:
+    if (
+      lower === 'courses' ||
+      lower.startsWith('new curriculum/') ||
+      lower.includes('blooms taxonomy/')
+    ) {
+      return null;
+    }
+
+    return tag;
+  })
+  .filter(Boolean)
   .join(', ');
 
     // Final ID mapping
