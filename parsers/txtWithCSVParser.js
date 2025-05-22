@@ -24,7 +24,7 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
   const titleToIdMap = await loadTitleToIdMap(csvPath);
   const text = txtBuffer.toString('utf-8');
 
-  const blocks = text.split(/\n(?=\d+\)\s)/).map(b => b.trim()).filter(Boolean);
+ const blocks = text.split(/(?=Title:\s.*?Category:)/g).map(b => b.trim()).filter(Boolean);
   const questions = [];
 
   let currentTitle = '';
