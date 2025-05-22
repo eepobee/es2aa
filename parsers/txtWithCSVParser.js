@@ -56,11 +56,32 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
       if (isCorrect) correctLetters.push(letter);
     }
 
-    // Parse tags
+    // Tag parsing
     const allTags = currentCategory.split(/[,;]/).map(t => t.trim());
-    const bloomTag = allTags.find(t => /^0[1-6]\s*[-–]?\s*\w+/.test(t));
-    const bloom = bloomTag ? bloomTag.replace(/\s*[-–]\s*/, ' ').trim() : '';
 
+    // Normalize Bloom's taxonomy
+    const BLOOM_LEVELS = {
+      '01': 'Remembering',
+      '02': 'Understanding',
+      '03': 'Applying',
+      '04': 'Analyzing',
+      '05': 'Evaluating',
+      '06': 'Creating'
+    };
+
+    const bloomRaw = allTags.find(tag => /\b0[1-6]\b.*\b(Remember|Understand|Apply|Analyz|Evaluat|Creat)/i.test(tag));
+    let bloom = '';
+
+    if (bloomRaw) {
+      const numMatch = bloomRaw.match(/\b0[1-6]\b/);
+      const num = numMatch ? numMatch[0] : '';
+      const label = BLOOM_LEVELS[num];
+      if (num && label) {
+        bloom = `${num} ${label}`;
+      }
+    }
+
+    // Course + Level extraction
     const courseTag = allTags.find(t => /\bNU\s*\d{3}\b/.test(t));
     const courseMatch = courseTag?.match(/NU\s*\d{3}/i);
     const course = courseMatch ? courseMatch[0].replace(/\s+/g, '') : '';
@@ -71,21 +92,38 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
         : ''
       : '';
 
-    // Save course/level once globally
     if (!fallbackCourse && course) fallbackCourse = course;
     if (!fallbackLevel && level) fallbackLevel = level;
 
-    const nclexDomains = [
-      'Basic Care and Comfort', 'Fundamentals Review', 'Health Promotion and Maintenance',
-      'Management of Care', 'Medical Calculations', 'Pharmalogical and Parenteral Therapies',
-      'Physiological Adaptation', 'Psychosocial Integrity', 'Reduction of Risk Potentia',
+    // NCLEX domain match (normalized + typo fix)
+    const NCLEX_DOMAINS = [
+      'Basic Care and Comfort',
+      'Fundamentals Review',
+      'Health Promotion and Maintenance',
+      'Management of Care',
+      'Medical Calculations',
+      'Pharmalogical and Parenteral Therapies',
+      'Physiological Adaptation',
+      'Psychosocial Integrity',
+      'Reduction of Risk Potentia',
       'Safety and Infection Control'
     ];
-    const nclex = nclexDomains.find(domain =>
-      currentCategory.toLowerCase().includes(domain.toLowerCase())
-    ) || '';
 
-    const exclusions = new Set([bloom, course, nclex]);
+    let nclex = '';
+    const exclusions = new Set([bloom, course]);
+
+    for (const domain of NCLEX_DOMAINS) {
+      const match = allTags.find(tag => tag.toLowerCase().includes(domain.toLowerCase()));
+      if (match) {
+        nclex = domain === 'Reduction of Risk Potentia'
+          ? 'Reduction of Risk Potential'
+          : domain;
+        exclusions.add(match);
+        break;
+      }
+    }
+
+    // Topics = everything else
     const topics = allTags
       .filter(tag => tag && ![...exclusions].includes(tag))
       .join(', ');
