@@ -9,23 +9,23 @@
 <body>
   <div class="container">
     <h1>ExamSoft → Atomic Assessments</h1>
-    <p>Upload your ExamSoft PDF to generate a CSV for Atomic Assessments.</p>
+    <p>Upload your exported ExamSoft .txt and .csv files to generate a CSV for Atomic Assessments.</p>
 
     <form action="/tools/es2aa/uploads" method="post" enctype="multipart/form-data">
 
-      <!-- ExamSoft PDF -->
+      <!-- TXT File -->
       <label class="file-dropzone">
-        Upload ExamSoft PDF (click or drag file here)
-        <input type="file" id="pdfFile" name="pdf" accept="application/pdf" required>
+        Upload ExamSoft TXT export (click or drag file here)
+        <input type="file" id="txtFile" name="txt" accept=".txt" required>
       </label>
-      <div id="pdfFileName" class="file-name">No file chosen</div>
+      <div id="txtFileName" class="file-name">No file chosen</div>
 
-      <!-- Excel Metadata -->
+      <!-- CSV Metadata -->
       <label class="file-dropzone">
-        Upload Excel metadata (optional) (click or drag file here)
-        <input type="file" id="excelFile" name="xlsx" accept=".xlsx,.xls">
+        Upload ExamSoft CSV metadata (click or drag file here)
+        <input type="file" id="csvFile" name="csv" accept=".csv" required>
       </label>
-      <div id="excelFileName" class="file-name">No file chosen</div>
+      <div id="csvFileName" class="file-name">No file chosen</div>
 
       <button type="submit" class="btn-blue">Upload and Convert</button>
     </form>
@@ -42,15 +42,15 @@
   </div>
 
   <script>
-    const pdfInput = document.getElementById('pdfFile');
-    const excelInput = document.getElementById('excelFile');
+    const txtInput = document.getElementById('txtFile');
+    const csvInput = document.getElementById('csvFile');
 
-    pdfInput.addEventListener('change', function () {
-      document.getElementById('pdfFileName').textContent = this.files[0]?.name || 'No file chosen';
+    txtInput.addEventListener('change', function () {
+      document.getElementById('txtFileName').textContent = this.files[0]?.name || 'No file chosen';
     });
 
-    excelInput.addEventListener('change', function () {
-      document.getElementById('excelFileName').textContent = this.files[0]?.name || 'No file chosen';
+    csvInput.addEventListener('change', function () {
+      document.getElementById('csvFileName').textContent = this.files[0]?.name || 'No file chosen';
     });
   </script>
 </body>

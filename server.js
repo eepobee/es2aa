@@ -1,11 +1,12 @@
+// File: server.js
+
 require('dotenv').config();
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const parseQuestionsFromPDF = require('./parsers/regexParser');
 const csvWriter = require('fast-csv');
-const parseXLSXMetadata = require('./parsers/xlsxParser');
+const parseQuestionsFromTxtWithCSV = require('./parsers/txtWithCSVParser'); // <-- updated parser
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
@@ -13,75 +14,48 @@ const upload = multer({ dest: 'uploads/' });
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
 app.post('/tools/es2aa/uploads', upload.fields([
-  { name: 'pdf', maxCount: 1 },
-  { name: 'xlsx', maxCount: 1 }
+  { name: 'txt', maxCount: 1 },
+  { name: 'csv', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const pdfPath = req.files?.pdf?.[0]?.path;
-    const xlsxPath = req.files?.xlsx?.[0]?.path;
+    const txtPath = req.files?.txt?.[0]?.path;
+    const csvPath = req.files?.csv?.[0]?.path;
 
-    const pdfBuffer = fs.readFileSync(pdfPath);
-    const questions = await parseQuestionsFromPDF(pdfBuffer);
-
-    let metadataMap = {};
-    if (xlsxPath) {
-      metadataMap = await parseXLSXMetadata(xlsxPath);
-    }
-
-    let fallbackCourse = '';
-    let fallbackLevel = '';
-    for (const meta of Object.values(metadataMap)) {
-      if (meta.course && meta.level) {
-        fallbackCourse = meta.course;
-        fallbackLevel = meta.level;
-        break;
-      }
-    }
+    const txtBuffer = fs.readFileSync(txtPath);
+    const questions = await parseQuestionsFromTxtWithCSV(txtBuffer, csvPath);
 
     const MAX_TOPICS = 5;
 
-    const rawRows = questions
-      .filter(q => {
-        const meta = metadataMap[q.id];
-        return meta && meta.type === 'Multiple Choice';
-      })
-      .map(q => {
-        const meta = metadataMap[q.id];
-        const level = meta.level || fallbackLevel;
-        const course = meta.course || fallbackCourse;
-        const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
+    const rawRows = questions.map(q => {
+      const row = {
+        'Question ID': q.id || '',
+        Title: q.title || '',
+        'Question Text': q.question || '',
+        'Correct Answer': q.correctAnswer || '',
+        'Question Type': 'Multiple Choice',
+        Template: q.correctAnswer?.includes(';') ? 'multiple response' : 'standard',
+        "Tag: Bloom's": q.bloom || '',
+        'Tag: Level': q.level || '',
+        'Tag: NCLEX': q.nclex || '',
+        'Tag: Course #': q.course || '',
+        'Correct Feedback': q.rationale || ''
+      };
 
-        const row = {
-  'Question ID': q.id ? prefix + q.id : '',
-  Title: q.id || '',
-  'Question Text': q.question || '',
-  'Correct Answer': q.correctAnswer || '',
-  'Question Type': meta.type || '',
-  Template: q.correctAnswer?.includes(';') ? 'multiple response' : 'standard',
-  "Tag: Bloom's": meta.bloom || '',
-  'Tag: Level': level,
-  'Tag: NCLEX': meta.nclex || '',
-  'Tag: Course #': course,
-  'Correct Feedback': meta.feedback || ''  
-};
+      const topicList = Array.from(new Set(
+        (q.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean)
+      ));
 
-        const topicList = Array.from(new Set(
-          Array.isArray(meta.topics)
-            ? meta.topics
-            : (meta.topics || '').split(/[,;]/).map(t => t.trim()).filter(Boolean)
-        ));
+      for (let i = 0; i < MAX_TOPICS; i++) {
+        row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
+      }
 
-        for (let i = 0; i < MAX_TOPICS; i++) {
-          row[`Tag: Topic_${i + 1}`] = topicList[i] || '';
-        }
-
-        const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
-        labels.forEach((label, i) => {
-          row[`Option ${label}`] = q.choices?.[i] || '';
-        });
-
-        return row;
+      const labels = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+      labels.forEach((label, i) => {
+        row[`Option ${label}`] = q.choices?.[i] || '';
       });
+
+      return row;
+    });
 
     // Identify which topic columns are actually used
     const usedTopicCols = new Set();
@@ -92,7 +66,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
       }
     });
 
-    // Keep only used topic columns
     const csvRows = rawRows.map(row => {
       const newRow = {};
       for (const key in row) {
@@ -103,7 +76,6 @@ app.post('/tools/es2aa/uploads', upload.fields([
       return newRow;
     });
 
-    // Extract header order
     const firstRow = csvRows[0] || {};
     const originalHeaders = Object.keys(firstRow);
     const topicHeaders = originalHeaders.filter(h => h.startsWith('Tag: Topic_'));
@@ -119,8 +91,8 @@ app.post('/tools/es2aa/uploads', upload.fields([
     csvRows.forEach(row => csvStream.write(row));
     csvStream.end();
 
-    fs.unlinkSync(pdfPath);
-    if (xlsxPath) fs.unlinkSync(xlsxPath);
+    fs.unlinkSync(txtPath);
+    fs.unlinkSync(csvPath);
   } catch (err) {
     console.error('Error processing upload:', err);
     res.status(500).send('Failed to process input.');

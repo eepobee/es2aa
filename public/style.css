@@ -64,6 +64,40 @@ p {
   cursor: pointer;
 }
 
+/* Distinguish multiple file dropzones more clearly */
+.file-dropzone:nth-of-type(1)::before {
+  content: "TXT File";
+  display: block;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.file-dropzone:nth-of-type(2)::before {
+  content: "CSV File";
+  display: block;
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+/* Responsive enhancement (optional) */
+@media (max-width: 500px) {
+  h1 {
+    font-size: 1.4rem;
+  }
+
+  .container {
+    padding: 30px 20px;
+  }
+
+  button {
+    font-size: 1rem;
+    padding: 12px;
+  }
+}
+
+
 /* Filename display */
 .file-name {
   font-size: 0.95rem;
