@@ -113,11 +113,18 @@ if (bloomRaw) {
         break;
       }
     }
+    const topicExclusions = [
+  'courses',
+  'new curriculum/',
+  'concepts/',
+  'body systems/',
+  'blooms taxonomy/'
+];
 
-    // Topics = everything else
-    const topics = allTags
-      .filter(tag => tag && ![...exclusions].includes(tag))
-      .join(', ');
+const topics = allTags
+  .filter(tag => tag && ![...exclusions].includes(tag))
+  .filter(tag => !topicExclusions.some(ex => tag.toLowerCase().includes(ex)))
+  .join(', ');
 
     // Final ID mapping
     const id = titleToIdMap[currentTitle] || '';
