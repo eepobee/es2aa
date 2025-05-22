@@ -11,23 +11,18 @@ async function parseQuestionsFromPDF(buffer) {
   const text = data.text;
   const questions = [];
 
-  // Match full blocks starting with "Item ID: ####" up to the next "Item ID" or end
-  const blockRegex = /Item ID:\s*(\d+)[\s\S]*?(?=(?:\nItem ID:|\Z))/g;
-  const matches = text.matchAll(blockRegex);
+ const rawBlocks = text.split(/(?=Question #:\s*\d+)/).filter(q => q.trim().length > 20);
 
-  let questionNum = 0;
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const block = rawBlocks[i];
+    const questionNum = i + 1;
 
-  for (const match of matches) {
-    questionNum++;
-    const id = match[1].trim();
-    const block = match[0];
-
-    console.log(`\n===== RAW BLOCK ${questionNum} (ID: ${id}) =====\n`);
+    console.log(`\n===== RAW BLOCK ${questionNum} =====\n`);
     console.log(block);
 
     const cleanedBlock = block.replace(/Item Psychometrics:[\s\S]*?(?=Question #:|$)/gi, '');
 
-    // Extract question line based on position of first choice
+    // NEW: Extract question line based on position of first choice
     const lines = cleanedBlock.split('\n');
     let question = '';
     let firstChoiceIndex = lines.findIndex(line =>
@@ -50,11 +45,11 @@ async function parseQuestionsFromPDF(buffer) {
 
     const choiceRegex = /(?:^|\n)\s*(✓|3|\d+)?\s*([A-K])\.\s*(.*?)(?=(?:\n\s*(?:✓|3|\d+)?\s*[A-K]\.|Rationale:|Item ID:|Item Description:|Attachment:|Item Categories:|Category Name|Item Creator:|$))/gs;
 
-    let matchChoice;
-    while ((matchChoice = choiceRegex.exec(cleanedBlock)) !== null) {
-      const marker = matchChoice[1] ? matchChoice[1].trim() : '';
-      const letter = matchChoice[2];
-      let text = matchChoice[3].trim();
+    let match;
+    while ((match = choiceRegex.exec(cleanedBlock)) !== null) {
+      const marker = match[1] ? match[1].trim() : '';
+      const letter = match[2];
+      let text = match[3].trim();
 
       // Skip clearly invalid junk options (page break bleed)
       if (/^(Category|Item|Attachment|Rationale)/i.test(text)) continue;
@@ -73,6 +68,10 @@ async function parseQuestionsFromPDF(buffer) {
 
     const correctAnswer = correctLetters.join(';');
     console.log(`[Q${questionNum}] Correct Answer: ${correctAnswer}`);
+
+    const idMatch = cleanedBlock.match(/Item ID:\s*(\d+)/);
+    const id = idMatch ? idMatch[1].trim() : '';
+    console.log(`[Q${questionNum}] Item ID: ${id}`);
 
     questions.push({
       id,
