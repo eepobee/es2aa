@@ -11,7 +11,7 @@ async function parseQuestionsFromPDF(buffer) {
   const text = data.text;
   const questions = [];
 
-  const rawBlocks = text.split(/Question #:\s*\d+/).filter(q => q.trim().length > 20);
+ const rawBlocks = text.split(/(?:^|\n)Item ID:\s*\d+/).filter(q => q.trim().length > 20);
 
   for (let i = 0; i < rawBlocks.length; i++) {
     const block = rawBlocks[i];
