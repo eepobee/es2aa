@@ -1,5 +1,3 @@
-// File: parsers/txtWithCSVParser.js
-
 const fs = require('fs');
 const csv = require('csv-parser');
 
@@ -23,12 +21,13 @@ function loadTitleToIdMap(csvPath) {
 module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath) {
   const titleToIdMap = await loadTitleToIdMap(csvPath);
   const text = txtBuffer.toString('utf-8');
-
- const blocks = text.split(/(?=Title:\s.*?Category:)/g).map(b => b.trim()).filter(Boolean);
+  const blocks = text.split(/(?=Title:\s.*?Category:)/g).map(b => b.trim()).filter(Boolean);
   const questions = [];
 
   let currentTitle = '';
   let currentCategory = '';
+  let fallbackCourse = '';
+  let fallbackLevel = '';
 
   for (const block of blocks) {
     const titleMatch = block.match(/Title:\s*(.*?)\s+Category:/i);
@@ -61,13 +60,20 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
     const allTags = currentCategory.split(/[,;]/).map(t => t.trim());
     const bloomTag = allTags.find(t => /^0[1-6]\s*[-–]?\s*\w+/.test(t));
     const bloom = bloomTag ? bloomTag.replace(/\s*[-–]\s*/, ' ').trim() : '';
-    const course = allTags.find(t => /\bNU\s*\d{3}\b/.test(t)) || '';
-    const courseNumber = course.match(/\d{3}/)?.[0];
+
+    const courseTag = allTags.find(t => /\bNU\s*\d{3}\b/.test(t));
+    const courseMatch = courseTag?.match(/NU\s*\d{3}/i);
+    const course = courseMatch ? courseMatch[0].replace(/\s+/g, '') : '';
+    const courseNumber = course?.match(/\d{3}/)?.[0];
     const level = courseNumber
       ? parseInt(courseNumber) < 400 ? 'Undergraduate'
         : parseInt(courseNumber) >= 500 ? 'Graduate'
         : ''
       : '';
+
+    // Save course/level once globally
+    if (!fallbackCourse && course) fallbackCourse = course;
+    if (!fallbackLevel && level) fallbackLevel = level;
 
     const nclexDomains = [
       'Basic Care and Comfort', 'Fundamentals Review', 'Health Promotion and Maintenance',
@@ -86,7 +92,7 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
 
     // Final ID mapping
     const id = titleToIdMap[currentTitle] || '';
-    const prefix = level === 'Undergraduate' ? 'U' : level === 'Graduate' ? 'G' : '';
+    const prefix = fallbackLevel === 'Undergraduate' ? 'U' : fallbackLevel === 'Graduate' ? 'G' : '';
     const questionId = id ? `${prefix}${id}` : '';
 
     questions.push({
@@ -97,8 +103,8 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
       choices,
       rationale: rationaleText,
       bloom,
-      level,
-      course,
+      level: fallbackLevel,
+      course: fallbackCourse,
       nclex,
       topics
     });
