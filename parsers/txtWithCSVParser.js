@@ -60,24 +60,15 @@ module.exports = async function parseQuestionsFromTxtWithCSV(txtBuffer, csvPath)
     const allTags = currentCategory.split(/[,;]/).map(t => t.trim());
 
     // Normalize Bloom's taxonomy
-    const BLOOM_LEVELS = {
-  '01': 'Remembering',
-  '02': 'Understanding',
-  '03': 'Applying',
-  '04': 'Analyzing',
-  '05': 'Evaluating',
-  '06': 'Creating'
-};
-
-const bloomRaw = allTags.find(tag => /\b0[1-6]\b.*\b(Remember|Understand|Apply|Analyz|Evaluat|Creat)/i.test(tag));
-let bloom = '';
+  let bloom = '';
+const bloomRaw = allTags.find(tag => /Blooms\s*taxonomy\s*\/\s*\d{2}\s*\w+/i.test(tag));
 
 if (bloomRaw) {
-  const numMatch = bloomRaw.match(/\b0[1-6]\b/);
-  const num = numMatch ? numMatch[0] : '';
-  const label = BLOOM_LEVELS[num];
-  if (num && label) {
-    bloom = `${num} ${label}`;
+  const match = bloomRaw.match(/Blooms\s*taxonomy\s*\/\s*(\d{2})\s*(.+)/i);
+  if (match) {
+    const num = match[1];
+    const label = match[2].trim();
+    bloom = `${num} ${label.charAt(0).toUpperCase()}${label.slice(1).toLowerCase()}`;
   }
 }
 
