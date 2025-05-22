@@ -113,9 +113,9 @@ if (bloomRaw) {
         break;
       }
     }
-    
+
 const topics = allTags
-  .filter(tag => tag && ![...exclusions].has(tag))
+  .filter(tag => tag && ![...exclusions].some(ex => ex.toLowerCase() === tag.toLowerCase()))
   .map(tag => {
     const lower = tag.toLowerCase();
 
