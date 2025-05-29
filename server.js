@@ -6,11 +6,12 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const csvWriter = require('fast-csv');
-const parseQuestionsFromTxtWithCSV = require('./parsers/txtWithCSVParser'); // <-- updated parser
+const parseQuestionsFromTxtWithCSV = require('./parsers/txtWithCSVParser');
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 
+app.use(express.urlencoded({ extended: true })); // <-- Needed to read form fields like campus
 app.use('/tools/es2aa', express.static(path.join(__dirname, 'public')));
 
 app.post('/tools/es2aa/uploads', upload.fields([
@@ -20,6 +21,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
   try {
     const txtPath = req.files?.txt?.[0]?.path;
     const csvPath = req.files?.csv?.[0]?.path;
+    const selectedCampus = req.body.campus;
 
     const txtBuffer = fs.readFileSync(txtPath);
     const questions = await parseQuestionsFromTxtWithCSV(txtBuffer, csvPath);
@@ -38,6 +40,7 @@ app.post('/tools/es2aa/uploads', upload.fields([
         'Tag: Level': q.level || '',
         'Tag: NCLEX': q.nclex || '',
         'Tag: Course #': q.course || '',
+        'Tag: Campus': selectedCampus || '',
         'Correct Feedback': q.rationale || ''
       };
 

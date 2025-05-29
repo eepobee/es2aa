@@ -10,6 +10,12 @@
   <div class="container">
     <h1>ExamSoft → Atomic Assessments</h1>
     <p>Upload your exported ExamSoft .txt and .csv files to generate a CSV for Atomic Assessments.</p>
+    <label for="campusSelect">Choose Campus (optional):</label>
+<select name="campus" id="campusSelect">
+  <option value="">-- None --</option>
+  <option value="Center City">Center City</option>
+  <option value="Dixon">Dixon</option>
+</select>
 
     <form action="/tools/es2aa/uploads" method="post" enctype="multipart/form-data">
 
